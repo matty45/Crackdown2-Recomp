@@ -1,0 +1,27 @@
+[main]
+file_path = "../private/default.xex"
+patch_file_path = "../private/default.xexp"
+patched_file_path = "../private/default_patched.xex"
+out_directory_path = ""
+switch_table_file_path = "CW2_Switch_Tables.toml"
+
+skip_lr = false
+skip_msr = false
+ctr_as_local = false
+xer_as_local = false
+reserved_as_local = false
+cr_as_local = false
+non_argument_as_local = false
+non_volatile_as_local = false
+
+restgprlr_14_address = 0x82F1E420
+savegprlr_14_address = 0x82F1E3D0
+restfpr_14_address = 0x82F2240C
+savefpr_14_address = 0x82F223C0
+restvmx_14_address = 0x82F226F8
+savevmx_14_address = 0x82F22460
+restvmx_64_address = 0x82F2278C
+savevmx_64_address = 0x82F224F4
+
+longjmp_address = 0x82F21740
+setjmp_address = 0x82F21A60

@@ -5,7 +5,7 @@
 Nothing here yet, but the config file has been setup correctly, there are missing instructions that need to be implemented into the recompiler.
 
 ### TODO:
-Add missing instructions:
+Add missing instructions into [XenonRecomp](https://github.com/hedge-dev/XenonRecomp):
 ```lhzu
 sthu
 vsel128

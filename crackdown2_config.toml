@@ -3,13 +3,14 @@
 # See README.md for full configuration reference.
 
 project_name = "crackdown2"
-file_path = "assets/latest_tu_default.xex"
+file_path = "assets/default.xex"
 out_directory_path = "generated"
 
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
 [functions]
+# Things that should be functions.
 0x8227B680 = { size = 92 }
 0x82458688 = { size = 12 }
 0x82458A88 = { size = 12 }
@@ -42,5 +43,64 @@ longjmp_address = 0x82F21740
 0x82C42358 = { size = 16 }
 0x82CDB2F8 = { size = 28 }
 0x82D51970 = { size = 8 }
+0x82DB1C00 = { size = 40 }  
+0x82DB1C30 = { size = 8 }  
+0x82DB1C38 = { size = 8 }  
+0x82DB1C40 = { size = 8 }
 0x82CF7BD8 = { parent = 0x82CDB2F8, size = 0x14 }
 0x82CFA854 = { parent = 0x82CFA7D8, size = 8 }
+0x82DB1CB0 = { size = 32 }
+0x82D98100 = { name = "Thunk_AddOffset0xB0_4" }  
+0x82D98120 = { name = "Thunk_SubOffset0xB0_8" }  
+0x82D98140 = { name = "Thunk_SubAddOffset0xB0_C"}  
+0x82D98168 = { name = "Thunk_AddOffset0xB0_10" }  
+0x82D98188 = { name = "Thunk_SubOffset0xB0_14" }  
+0x82D981A8 = { name = "Thunk_VtblJump_28"}  
+0x82D981C0 = { name = "Thunk_VtblJump_2C"}  
+0x82D981D8 = { name = "Thunk_VtblJump_20"}
+0x82DE00A0 = { name = "sub_82DE00A0" }  
+0x82DE00B8 = { name = "sub_82DE00B8" }  
+0x82DE00D0 = { name = "sub_82DE00D0" }  
+0x82DE00F0 = { name = "sub_82DE00F0" }  
+0x82DE0118 = { name = "sub_82DE0118" }  
+0x82DE0130 = { name = "sub_82DE0130" }  
+0x82DE0178 = { name = "sub_82DE0178" }
+0x82DDFF98 = { name = "sub_82DDFF98" }  
+0x82DDFFA0 = { name = "sub_82DDFFA0" }  
+0x82DDFFA8 = { name = "sub_82DDFFA8" }  
+0x82DDFFC0 = { name = "sub_82DDFFC0" }  
+0x82DDFFD0 = { name = "sub_82DDFFD0" }  
+0x82DDFFE0 = { name = "sub_82DDFFE0" }  
+0x82DDFFF8 = { name = "sub_82DDFFF8" }
+0x82DB6D60 = { name = "sub_82DB6D60" }  
+0x82DB6D88 = { name = "sub_82DB6D88" }  
+0x82DB6DA0 = { name = "sub_82DB6DA0" }  
+0x82DB6DB8 = { name = "sub_82DB6DB8" }  
+0x82DB6DD0 = { name = "sub_82DB6DD0" }
+0x82DF7778 = { name = "sub_82DF7778" }  
+0x82DF7790 = { name = "sub_82DF7790" }  
+0x82DF77A8 = { name = "sub_82DF77A8" }
+0x82E293C0 = { name = "sub_82E293C0" }
+0x82ddc380 = { name = "sub_82ddc380" }
+0x82EB7F80 = { name = "sub_82EB7F80" }  
+0x82EB7FF8 = { name = "sub_82EB7FF8" }  
+0x82EB8038 = { name = "sub_82EB8038" }
+0x82ECE708 = { name = "sub_82ECE708" }
+0x82D61568 = { name = "sub_82D61568" }
+
+# Functions that we possibly know the names for.
+0x82960BD0 = { name = "_cinit" }
+0x82F1E9B0 = { name = "j__cfltcvt_init" }
+0x822E0A78 = { name = "_qsort" }
+0x82AA61F8 = { name = "D3DXShader_Compiler_SortCombineUnrelatedCandidates" }
+0x82D64840 = { name = "XAUDIO2__ConvertToXAudio2Error" }
+0x82646460 = { name = "EnterCriticalSectionWrapper1", size = 8 }
+0x82D70470 = { name = "CThreadBase_Initialize" }
+0x82D60768 = { name = "LEAPCORE_CLeapSystem_Initialize" }
+0x826464A8 = { name = "LeaveCriticalSectionWrapper1" }
+0x82F21F60 = { name = "_memset" }
+0x82DB1110 = { name = "Scaleform_HeapPT_AllocEngine_freeSegment" }
+0x82E2EEC0 = { name = "Scaleform_HeapPT_Granulator_allocSegment"}
+0x82E2F368 = { name = "Scaleform_HeapPT_Granulator_Alloc" }
+0x82DAEAB0 = { name = "Scaleform_HeapPT_AllocLite_Alloc" }
+0x8291B900 = { name = "D3D_SetSurfaceClip" }

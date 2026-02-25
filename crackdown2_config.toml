@@ -87,37 +87,43 @@ longjmp_address = 0x82F21740
 0x82EB8038 = { name = "sub_82EB8038" }
 0x82ECE708 = { name = "sub_82ECE708" }
 0x82D61568 = { name = "sub_82D61568" }
+0x821F2E78 = { size = 1660 }
+0x82E38428 = { size = 872 }
+0x828D31D8 = { size = 544 }
 
 # Functions that we possibly know the names for.
-0x82960BD0 = { name = "_cinit" }
-0x82F1E9B0 = { name = "j__cfltcvt_init" }
-0x822E0A78 = { name = "_qsort" }
-0x82AA61F8 = { name = "D3DXShader_Compiler_SortCombineUnrelatedCandidates" }
-0x82D64840 = { name = "XAUDIO2__ConvertToXAudio2Error" }
-0x82646460 = { name = "EnterCriticalSectionWrapper1" }
-0x82D70470 = { name = "CThreadBase_Initialize" }
-0x82D60768 = { name = "LEAPCORE_CLeapSystem_Initialize" }
-0x826464A8 = { name = "LeaveCriticalSectionWrapper1" }
-0x82F21F60 = { name = "_memset" }
-0x82DB1110 = { name = "Scaleform_HeapPT_AllocEngine_freeSegment" }
-0x82E2EEC0 = { name = "Scaleform_HeapPT_Granulator_allocSegment"}
-0x82E2F368 = { name = "Scaleform_HeapPT_Granulator_Alloc" }
-0x82DAEAB0 = { name = "Scaleform_HeapPT_AllocLite_Alloc" }
-0x8291B900 = { name = "D3D_SetSurfaceClip" }
-0x82312F38 = { name = "D3DDevice_SetScissorRect" }
-0x8230B8B8 = { name = "D3D_SetViewport" }
-0x8291CC38 = { name = "D3DDevice_SetViewport" }
-0x82960F38 = { name = "XapiThreadStartup" }
-0x82955918 = { name = "_UnhandledExceptionFilter" }
-0x82914738 = { name = "RWS_MainLoop_ProcessWhileLoadingThreadProc" }
-0x82914960 = { name = "RWS_MainLoop_StartLoadLevelProcessing" }
-0x821E7E08 = { name = "_SetWaitableTimer" }
-0x8295A030 = { name = "XapipCreateThread" }
-0x82EE6390 = { name = "CRIERR_CallErr" }
-0x82954E58 = { name = "_Closehandle" }
-0x82955CE0 = { name = "_CreateThread" }
-0x826464B0 = { name = "Fun_Runtime_WrappedThreadFunc" }
-0x82C6D850 = { name = "XHVEngineCreate" }
-0x82895D50 = { name = "UI_ScreenControl_Render" }
-0x828F21C0 = { name = "UI_Component_Render" }
-0x822EF5F0 = { name = "UI_Crackform_Movie_Render" }
+0x82960BD0 = { name = "_cinit", size = 224 }
+0x82F1E9B0 = { name = "j__cfltcvt_init", size = 4 }
+0x822E0A78 = { name = "_qsort", size = 920 }
+0x82AA61F8 = { name = "D3DXShader_Compiler_SortCombineUnrelatedCandidates", size = 136 }
+0x82D64840 = { name = "XAUDIO2__ConvertToXAudio2Error", size = 144 }
+0x82646460 = { name = "EnterCriticalSectionWrapper1", size = 8 }
+0x82D70470 = { name = "CThreadBase_Initialize", size = 376 }
+0x82D60768 = { name = "LEAPCORE_CLeapSystem_Initialize", size = 364 }
+0x826464A8 = { name = "LeaveCriticalSectionWrapper1", size = 8 }
+0x82F21F60 = { name = "_memset", size = 160 }
+0x82DB1110 = { name = "Scaleform_HeapPT_AllocEngine_freeSegment", size = 264 }
+0x82E2EEC0 = { name = "Scaleform_HeapPT_Granulator_allocSegment", size = 636 }
+0x82E2F368 = { name = "Scaleform_HeapPT_Granulator_Alloc", size = 184 }
+0x82DAEAB0 = { name = "Scaleform_HeapPT_AllocLite_Alloc", size = 176 }
+0x8291B900 = { name = "D3D_SetSurfaceClip", size = 752 }
+0x82312F38 = { name = "D3DDevice_SetScissorRect", size = 248 }
+0x8291C498 = { name = "D3DDevice_SetRenderState_ScissorTestEnable", size = 12 }
+0x8230B8B8 = { name = "D3D_SetViewport", size = 600 }
+0x8291CC38 = { name = "D3DDevice_SetViewport", size = 124 }
+0x82960F38 = { name = "XapiThreadStartup", size = 128 }
+0x82955918 = { name = "_UnhandledExceptionFilter", size = 144 }
+0x82914738 = { name = "RWS_MainLoop_ProcessWhileLoadingThreadProc", size = 548 }
+0x82914960 = { name = "RWS_MainLoop_StartLoadLevelProcessing", size = 128 }
+0x82915FE0 = { name = "RWS_MainLoop_RenderThreadProc", size = 168 }
+0x82916280 = { name = "RWS_MainLoop_Render_Poll", size = 2820 }
+0x821E7E08 = { name = "_SetWaitableTimer", size = 108 }
+0x8295A030 = { name = "XapipCreateThread", size = 112 }
+0x82EE6390 = { name = "CRIERR_CallErr", size = 44 }
+0x82954E58 = { name = "_Closehandle", size = 72 }
+0x82955CE0 = { name = "_CreateThread", size = 12 }
+0x826464B0 = { name = "Fun_Runtime_WrappedThreadFunc", size = 60 }
+0x82C6D850 = { name = "XHVEngineCreate", size = 636 }
+0x82895D50 = { name = "UI_ScreenControl_Render", size = 132 }
+0x828F21C0 = { name = "UI_Component_Render", size = 1752 }
+0x822EF5F0 = { name = "UI_Crackform_Movie_Render", size = 216 }

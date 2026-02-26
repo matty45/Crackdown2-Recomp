@@ -25,6 +25,7 @@ endif()
 # Sources
 set(CRACKDOWN2_SOURCES
     src/main.cpp
+    src/hooks.cpp
 )
 
 # Include generated code if codegen has been run

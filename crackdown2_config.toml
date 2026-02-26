@@ -9,10 +9,12 @@ out_directory_path = "generated"
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
-[[switch_tables]]  
+[[midasm_hook]]
 address = 0x82812FA4
-register = 3  
-labels = [0x82812FE4, 0x82812FEC, 0x82812FF4, 0x82812FDC]
+name = "FixBrokenSwitchTable_82812FA4"
+registers = ["r3"]       # Registers passed to the hook function
+after_instruction = false       # Insert before (false) or after (true) the instruction
+return = true    
 
 [functions]
 # Things that should be functions.
@@ -141,33 +143,15 @@ labels = [0x82812FE4, 0x82812FEC, 0x82812FF4, 0x82812FDC]
 0x828AD32C = { size = 24 }
 0x82CD42E8 = { size = 40 }
 0x82CD4310 = { size = 8 }
-0x82776BA0 = { size = 20 }
-0x82776BC0 = { size = 100 }
-0x82776BC8 = { size = 100 }
-0x82776B88 = { size = 8 }
-0x82776BA8 = { size = 8 }
-0x82776B90 = { size = 8 }
-0x82776BB0 = { size = 8 }
-0x82776BD0 = { size = 20 }
-0x82776B98 = { size = 8 }
-0x82776BB8 = { size = 20 }
 0x82580A58 = { size = 16 }
 0x825BE288 = { size = 124 }
-0x825BE308 = { size = 96 }
-0x82551AC0 = { size = 48 }
 0x82551AF0 = { size = 8 }
-0x82551520 = { size = 8 }
-0x821D13C0 = { size = 328 }
-0x821D0A80 = { size = 64 }
-0x821D0AC0 = { size = 20 }
-0x821D0B88 = { size = 328 }
-0x825516B8 = { size = 20 }
-0x821D0CD0 = { size = 16 }
-0x821D2510 = { size = 16 }
-0x821D0AD8 = { size = 172 }
-0x821D1C58 = { size = 92 }
-0x82551498 = { size = 16 }
-0x82812F90 = { end = 0x82812FF8 }
+0x82776BD0 = { size = 20 }
+0x82812f90 = { size = 105 }  
+0x8260A278 = { size = 32 }
+0x82475860 = { size = 28 }
+0x8260A258 = { size = 32 }
+0x823C3C00 = { size = 2008 }
 
 # Functions that we possibly know the names for.
 0x82960BD0 = { name = "_cinit", size = 224 }

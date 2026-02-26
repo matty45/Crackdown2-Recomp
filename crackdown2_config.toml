@@ -90,6 +90,20 @@ longjmp_address = 0x82F21740
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
+0x8304A368 = { size = 172 }
+0x82EE68F8 = { size = 44 }
+0x82EE68E8 = { size = 80 }
+0x82EE68E0 = { size = 80 }
+0x82EE68F0 = { size = 44 }
+0x8290DBC8 = { size = 32 }
+0x8290DC08 = { size = 32 }
+0x8290DC28 = { size = 32 }
+0x8290DC48 = { size = 32 }
+0x8290DBE8 = { size = 32 }
+0x8290DC68 = { size = 32 }
+0x8290DC88 = { size = 32 }
+0x8290DCA8 = { size = 32 }
+0x8290DCC8 = { size = 52 }
 
 # Functions that we possibly know the names for.
 0x82960BD0 = { name = "_cinit", size = 224 }
@@ -108,6 +122,7 @@ longjmp_address = 0x82F21740
 0x82DAEAB0 = { name = "Scaleform_HeapPT_AllocLite_Alloc", size = 176 }
 0x8291B900 = { name = "D3D_SetSurfaceClip", size = 752 }
 0x82312F38 = { name = "D3DDevice_SetScissorRect", size = 248 }
+0x8235BC58 = { name = "D3D_CDevice_KickOff", size = 256 }
 0x8291C498 = { name = "D3DDevice_SetRenderState_ScissorTestEnable", size = 12 }
 0x8230B8B8 = { name = "D3D_SetViewport", size = 600 }
 0x8291CC38 = { name = "D3DDevice_SetViewport", size = 124 }
@@ -127,3 +142,20 @@ longjmp_address = 0x82F21740
 0x82895D50 = { name = "UI_ScreenControl_Render", size = 132 }
 0x828F21C0 = { name = "UI_Component_Render", size = 1752 }
 0x822EF5F0 = { name = "UI_Crackform_Movie_Render", size = 216 }
+0x82962D88 = { name = "_RtlAllocateHeap", size = 2164 }
+0x82963650 = { name = "_RtlFreeHeap", size = 676 }
+0x82962000 = { name = "_RtlSizeHeap", size = 168 }
+0x82963948 = { name = "_RtlReAllocateHeap", size = 2200 }
+0x82F1E480 = { name = "_memcpy", size = 1160 }
+0x82EC9D30 = { name = "criVmpv_CopyFrameYuvBuffers", size = 388 }
+0x82ECB3A8 = { name = "criVmpv_GetNextFrameInfo", size = 320 }
+0x82ECCA68 = { name = "criVdec_GetFramePointer", size = 52 }
+0x82EC7C50 = { name = "criMvPly_CopyFrameYUVBuffers", size = 556 }
+0x82D94968 = { name = "Scaleform_Sound_SoundSample_Release", size = 80 }
+0x82B4D838 = { name = "XGRAPHICS_CompileGetFogBias", size = 260 }
+0x82A625A0 = { name = "SSMDebugPrint", size = 584 }
+0x82A67F10 = { name = "XGRAPHICS_AS_GetStateI", size = 112 }
+0x82B1D3E8 = { name = "XGRAPHICS_AS_GetStateF", size = 112 }
+0x82B49DF8 = { name = "XGRAPHICS__FloatToString", size = 248 }
+0x825D0CF0 = { name = "GDb_ConsoleOutput", size = 92 }
+0x82F1D3B0 = { name = "Fun_Runtime_StringPrintfTrunc_va_list", size = 12 }

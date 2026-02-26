@@ -9,84 +9,89 @@ out_directory_path = "generated"
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
+[[switch_tables]]  
+address = 0x82812FA4
+register = 3  
+labels = [0x82812FE4, 0x82812FEC, 0x82812FF4, 0x82812FDC]
+
 [functions]
 # Things that should be functions.
-0x8227B680 = { name = "func_0x8227B680" }
-0x82458688 = { name = "func_0x82458688" }
-0x82458A88 = { name = "func_0x82458A88" }
-0x8245B6D0 = { name = "func_0x8245B6D0" }
-0x82542128 = { name = "func_0x82542128" }
-0x8260DD60 = { name = "func_0x8260DD60" }
-0x826105E0 = { name = "func_0x826105E0" }
-0x8261DED0 = { name = "func_0x8261DED0" }
-0x826225D0 = { name = "func_0x826225D0" }
-0x82623150 = { name = "func_0x82623150" }
-0x826270F8 = { name = "func_0x826270F8" }
-0x82629280 = { name = "func_0x82629280" }
-0x82634928 = { name = "func_0x82634928" }
-0x8263A6A8 = { name = "func_0x8263A6A8" }
-0x8263B0F8 = { name = "func_0x8263B0F8" }
-0x8263BA68 = { name = "func_0x8263BA68" }
-0x82684BE8 = { name = "func_0x82684BE8" }
-0x826E9860 = { name = "func_0x826E9860" }
-0x826EC098 = { name = "func_0x826EC098" }
-0x826ECEC8 = { name = "func_0x826ECEC8" }
-0x82736D78 = { name = "func_0x82736D78" }
-0x8273A6F0 = { name = "func_0x8273A6F0" }
-0x8273AE10 = { name = "func_0x8273AE10" }
-0x8273E5A8 = { name = "func_0x8273E5A8" }
-0x82743058 = { name = "func_0x82743058" }
-0x82743698 = { name = "func_0x82743698" }
-0x82746878 = { name = "func_0x82746878" }
-0x82747EF8 = { name = "func_0x82747EF8" }
-0x82770140 = { name = "func_0x82770140" }
-0x82C42358 = { name = "func_0x82C42358" }
-0x82CDB2F8 = { name = "func_0x82CDB2F8" }
-0x82D51970 = { name = "func_0x82D51970" }
-0x82DB1C00 = { name = "func_0x82DB1C00" }
-0x82DB1C30 = { name = "func_0x82DB1C30" }
-0x82DB1C38 = { name = "func_0x82DB1C38" }
-0x82DB1C40 = { name = "func_0x82DB1C40" }
+0x8227B680 = {}
+0x82458688 = {}
+0x82458A88 = {}
+0x8245B6D0 = {}
+0x82542128 = {}
+0x8260DD60 = {}
+0x826105E0 = {}
+0x8261DED0 = {}
+0x826225D0 = {}
+0x82623150 = {}
+0x826270F8 = {}
+0x82629280 = {}
+0x82634928 = {}
+0x8263A6A8 = {}
+0x8263B0F8 = {}
+0x8263BA68 = {}
+0x82684BE8 = {}
+0x826E9860 = {}
+0x826EC098 = {}
+0x826ECEC8 = {}
+0x82736D78 = {}
+0x8273A6F0 = {}
+0x8273AE10 = {}
+0x8273E5A8 = {}
+0x82743058 = {}
+0x82743698 = {}
+0x82746878 = {}
+0x82747EF8 = {}
+0x82770140 = {}
+0x82C42358 = {}
+0x82CDB2F8 = {}
+0x82D51970 = {}
+0x82DB1C00 = {}
+0x82DB1C30 = {}
+0x82DB1C38 = {}
+0x82DB1C40 = {}
 0x82CF7BD8 = { parent = 0x82CDB2F8 }
 0x82CFA854 = { parent = 0x82CFA7D8 }
-0x82DB1CB0 = { name = "func_0x82DB1CB0" }
-0x82D98100 = { name = "Thunk_AddOffset0xB0_4" }  
-0x82D98120 = { name = "Thunk_SubOffset0xB0_8" }  
-0x82D98140 = { name = "Thunk_SubAddOffset0xB0_C"}  
-0x82D98168 = { name = "Thunk_AddOffset0xB0_10" }  
-0x82D98188 = { name = "Thunk_SubOffset0xB0_14" }  
-0x82D981A8 = { name = "Thunk_VtblJump_28"}  
-0x82D981C0 = { name = "Thunk_VtblJump_2C"}  
-0x82D981D8 = { name = "Thunk_VtblJump_20"}
-0x82DE00A0 = { name = "sub_82DE00A0" }  
-0x82DE00B8 = { name = "sub_82DE00B8" }  
-0x82DE00D0 = { name = "sub_82DE00D0" }  
-0x82DE00F0 = { name = "sub_82DE00F0" }  
-0x82DE0118 = { name = "sub_82DE0118" }  
-0x82DE0130 = { name = "sub_82DE0130" }  
-0x82DE0178 = { name = "sub_82DE0178" }
-0x82DDFF98 = { name = "sub_82DDFF98" }  
-0x82DDFFA0 = { name = "sub_82DDFFA0" }  
-0x82DDFFA8 = { name = "sub_82DDFFA8" }  
-0x82DDFFC0 = { name = "sub_82DDFFC0" }  
-0x82DDFFD0 = { name = "sub_82DDFFD0" }  
-0x82DDFFE0 = { name = "sub_82DDFFE0" }  
-0x82DDFFF8 = { name = "sub_82DDFFF8" }
-0x82DB6D60 = { name = "sub_82DB6D60" }  
-0x82DB6D88 = { name = "sub_82DB6D88" }  
-0x82DB6DA0 = { name = "sub_82DB6DA0" }  
-0x82DB6DB8 = { name = "sub_82DB6DB8" }  
-0x82DB6DD0 = { name = "sub_82DB6DD0" }
-0x82DF7778 = { name = "sub_82DF7778" }  
-0x82DF7790 = { name = "sub_82DF7790" }  
-0x82DF77A8 = { name = "sub_82DF77A8" }
-0x82E293C0 = { name = "sub_82E293C0" }
-0x82ddc380 = { name = "sub_82ddc380" }
-0x82EB7F80 = { name = "sub_82EB7F80" }  
-0x82EB7FF8 = { name = "sub_82EB7FF8" }  
-0x82EB8038 = { name = "sub_82EB8038" }
-0x82ECE708 = { name = "sub_82ECE708" }
-0x82D61568 = { name = "sub_82D61568" }
+0x82DB1CB0 = {}
+0x82D98100 = {}  
+0x82D98120 = {}  
+0x82D98140 = {}  
+0x82D98168 = {}  
+0x82D98188 = {}  
+0x82D981A8 = {}  
+0x82D981C0 = {}  
+0x82D981D8 = {}
+0x82DE00A0 = {}  
+0x82DE00B8 = {}  
+0x82DE00D0 = {}  
+0x82DE00F0 = {}  
+0x82DE0118 = {}  
+0x82DE0130 = {}  
+0x82DE0178 = {}
+0x82DDFF98 = {}  
+0x82DDFFA0 = {}  
+0x82DDFFA8 = {}  
+0x82DDFFC0 = {}  
+0x82DDFFD0 = {}  
+0x82DDFFE0 = {}  
+0x82DDFFF8 = {}
+0x82DB6D60 = {}  
+0x82DB6D88 = {}  
+0x82DB6DA0 = {}  
+0x82DB6DB8 = {}  
+0x82DB6DD0 = {}
+0x82DF7778 = {}  
+0x82DF7790 = {}  
+0x82DF77A8 = {}
+0x82E293C0 = {}
+0x82ddc380 = {}
+0x82EB7F80 = {}  
+0x82EB7FF8 = {}  
+0x82EB8038 = {}
+0x82ECE708 = {}
+0x82D61568 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
@@ -104,6 +109,65 @@ longjmp_address = 0x82F21740
 0x8290DC88 = { size = 32 }
 0x8290DCA8 = { size = 32 }
 0x8290DCC8 = { size = 52 }
+0x82D5F688 = { size = 24 }
+0x82D5F6A0 = { size = 24 }
+0x82D56C80 = { size = 8 }
+0x82D56D40 = { size = 8 }
+0x82D56D78 = { size = 92 }
+0x82D56C88 = { size = 8 }
+0x82D56D48 = { size = 8 }
+0x82D56E38 = { size = 92 }
+0x82D56D10 = { size = 16 }
+0x82D56C90 = { size = 8 }
+0x82D56D50 = { size = 8 }
+0x82D56D18 = { size = 16 }
+0x82D56C98 = { size = 116 }
+0x82D56D58 = { size = 16 }
+0x82D56DD8 = { size = 76 }
+0x82D56A58 = { size = 336 }
+0x82D56D20 = { size = 16 }
+0x82D56C60 = { size = 8 }
+0x82D56D60 = { size = 8 }
+0x82D56BA8 = { size = 160 }
+0x82D56D28 = { size = 16 }
+0x82D56E28 = { size = 12 }
+0x82D56C68 = { size = 8 }
+0x82D56D68 = { size = 8 }
+0x82D56D30 = { size = 16 }
+0x82D56C70 = { size = 8 }
+0x82D56D70 = { size = 8 }
+0x82D56D38 = { size = 16 }
+0x828AD318 = { size = 20 }
+0x828AD32C = { size = 24 }
+0x82CD42E8 = { size = 40 }
+0x82CD4310 = { size = 8 }
+0x82776BA0 = { size = 20 }
+0x82776BC0 = { size = 100 }
+0x82776BC8 = { size = 100 }
+0x82776B88 = { size = 8 }
+0x82776BA8 = { size = 8 }
+0x82776B90 = { size = 8 }
+0x82776BB0 = { size = 8 }
+0x82776BD0 = { size = 20 }
+0x82776B98 = { size = 8 }
+0x82776BB8 = { size = 20 }
+0x82580A58 = { size = 16 }
+0x825BE288 = { size = 124 }
+0x825BE308 = { size = 96 }
+0x82551AC0 = { size = 48 }
+0x82551AF0 = { size = 8 }
+0x82551520 = { size = 8 }
+0x821D13C0 = { size = 328 }
+0x821D0A80 = { size = 64 }
+0x821D0AC0 = { size = 20 }
+0x821D0B88 = { size = 328 }
+0x825516B8 = { size = 20 }
+0x821D0CD0 = { size = 16 }
+0x821D2510 = { size = 16 }
+0x821D0AD8 = { size = 172 }
+0x821D1C58 = { size = 92 }
+0x82551498 = { size = 16 }
+0x82812F90 = { end = 0x82812FF8 }
 
 # Functions that we possibly know the names for.
 0x82960BD0 = { name = "_cinit", size = 224 }

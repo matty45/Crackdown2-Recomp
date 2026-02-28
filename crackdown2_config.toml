@@ -93,6 +93,7 @@ longjmp_address = 0x82F21740
 0x8255e5b0 = {}
 0x82607a80 = {}
 0x82e30e50 = {}
+0x825A7358 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
@@ -172,6 +173,8 @@ longjmp_address = 0x82F21740
 0x8291C498 = { name = "D3DDevice_SetRenderState_ScissorTestEnable", size = 12 }
 0x8230B8B8 = { name = "D3D_SetViewport", size = 600 }
 0x8291CC38 = { name = "D3DDevice_SetViewport", size = 124 }
+0x82928910 = { name = "D3D_DebugGpuDeadlock", size = 252 }
+0x82918A10 = { name = "D3D_CBlocker_Check", size = 216 }
 0x82960F38 = { name = "XapiThreadStartup", size = 128 }
 0x82955918 = { name = "_UnhandledExceptionFilter", size = 144 }
 0x82914738 = { name = "RWS_MainLoop_ProcessWhileLoadingThreadProc", size = 548 }
@@ -205,3 +208,8 @@ longjmp_address = 0x82F21740
 0x82B49DF8 = { name = "XGRAPHICS__FloatToString", size = 248 }
 0x825D0CF0 = { name = "GDb_ConsoleOutput", size = 92 }
 0x82F1D3B0 = { name = "Fun_Runtime_StringPrintfTrunc_va_list", size = 12 }
+0x82956B38 = { name = "XUserCreateAchievementEnumerator", size = 132 }
+0x828FBF60 = { name = "Achievements_ReadAchievementsTask_Update", size = 888 }
+0x82917D10 = { name = "D3DResource_Release", size = 128 }
+0x82917560 = { name = "D3D_DestroyResource", size = 544 }
+0x827FC850 = { name = "VFX_cGlobalLightManager_Render", size = 940 }

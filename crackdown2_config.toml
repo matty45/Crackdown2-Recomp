@@ -9,13 +9,6 @@ out_directory_path = "generated"
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
-[[midasm_hook]]
-address = 0x82812FA4
-name = "FixBrokenSwitchTable_82812FA4"
-registers = ["r3"]       # Registers passed to the hook function
-after_instruction = false       # Insert before (false) or after (true) the instruction
-return = true    
-
 [functions]
 # Things that should be functions.
 0x8227B680 = {}
@@ -93,7 +86,13 @@ return = true
 0x82EB7FF8 = {}  
 0x82EB8038 = {}
 0x82ECE708 = {}
+0x82CDB048 = {}
 0x82D61568 = {}
+0x82583B00 = {}
+0x82bc9060 = {}
+0x8255e5b0 = {}
+0x82607a80 = {}
+0x82e30e50 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
@@ -151,7 +150,6 @@ return = true
 0x8260A278 = { size = 32 }
 0x82475860 = { size = 28 }
 0x8260A258 = { size = 32 }
-0x823C3C00 = { size = 2008 }
 
 # Functions that we possibly know the names for.
 0x82960BD0 = { name = "_cinit", size = 224 }

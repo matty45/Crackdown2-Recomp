@@ -94,6 +94,8 @@ longjmp_address = 0x82F21740
 0x82607a80 = {}
 0x82e30e50 = {}
 0x825A7358 = {}
+0x82bc9078 = {}
+0x82607a50 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
@@ -280,4 +282,65 @@ longjmp_address = 0x82F21740
 0x826444B8 = { name = "PackedFile_PackedFile_PackedFile", size = 176 }
 0x826447D0 = { name = "PackedFile_PackedFile_LoadTOC", size = 344 }
 0x82644928 = { name = "PackedFile_PackedFile_GenerateSearchIndex", size = 372 }
+0x8264DAF0 = { name = "Fun_Runtime_FunMalloc_XTL", size = 240 }
+0x8264DEF0 = { name = "XMemAlloc", size = 4 }
+0x82970000 = { name = "D3DXCore_CFile_Open", size = 248 }
+0x82647AF8 = { name = "Fun_Runtime_cFile_Open", size = 240 }
+0x829553B0 = { name = "_CreateFileA", size = 500 }
+0x82956C90 = { name = "_GetFileSize", size = 104 }
+0x82955E48 = { name = "_GetFileSizeEx", size = 108 }
+0x821D0DD8 = { name = "_ReadFile", size = 380 }
 0x82F18020 = { name = "_wcslen", size = 36 }
+0x82EFF980 = { name = "SentientXls_DataFile_OnSuccessInner", size = 476 }
+0x82F39510 = { name = "_FlushFileBuffers", size = 60 }
+0x829AA960 = { name = "D3DX_error_exit", size = 76 }
+0x82A2D378 = { name = "D3DX_jpeg_destroy", size = 76 }
+0x82F38B70 = { name = "_OutputDebugStringA", size = 64 }
+0x82F39668 = { name = "_OutputDebugStringW", size = 108 }
+0x82958940 = { name = "XapiLookupString", size = 128 }
+0x82958888 = { name = "XapiShowErrorAndWait", size = 184 }
+0x82958208 = { name = "XGetOverlappedResult", size = 152 }
+0x82955CD8 = { name = "_WaitForSingleObject", size = 8 }
+0x82959FC8 = { name = "_WaitForSingleObjectEx", size = 100 }
+0x82959FA8 = { name = "XapiFormatTimeOut", size = 32 }
+0x82F396D8 = { name = "_RtlOutputDebugString", size = 20 }
+0x82958010 = { name = "_GetOverlappedResult", size = 168 }
+0x82955B00 = { name = "_GetLastError", size = 4 }
+0x82958A10 = { name = "_RtlGetLastError", size = 32 }
+0x82F01160 = { name = "Xls_Overlapped_OnComplete", size = 192 }
+0x82B82E60 = { name = "_WSAGetOverlappedResult", size = 28 }
+0x82958308 = { name = "_GetFileTime", size = 140 }
+0x82C7B7F0 = { name = "CXrnmEndpoint_ProcessRecvCallback", size = 128 }
+0x82F32A00 = { name = "__tsopen_nolock", size = 1328 }
+0x82F379C8 = { name = "__get_fmode", size = 100 }
+0x82F1EB18 = { name = "__errno", size = 56 }
+0x82F377A8 = { name = "__chsize_nolock", size = 400 }
+0x82917058 = { name = "SKAppStart", size = 1000 }
+0x82BA3A30 = { name = "Device_Start", size = 100 }
+0x82918AE8 = { name = "Direct3D_CreateDevice", size = 400 }
+0x82B87BC8 = { name = "Display_Init", size = 204 }
+0x82B87358 = { name = "Display_InitPresentParams", size = 268 }
+0x82B877B0 = { name = "Display_InitBuffers", size = 1044 }
+0x82928008 = { name = "D3D_InitializeHardwareDevice", size = 600 }
+0x8235B6F0 = { name = "D3DDevice_SetRingBufferParameters", size = 1380 }
+0x8236CE90 = { name = "D3D_InitializeAsyncResources", size = 448 }
+0x8292FAE8 = { name = "D3D_InitializeAsyncCommandBuffers", size = 448 }
+0x8292E538 = { name = "D3D_TrainEDRAM", size = 228 }
+0x8292D898 = { name = "D3D_GetDrPixCounters", size = 16 }
+0x8222E790 = { name = "D3D_ResetAllState", size = 296 }
+0x82918C90 = { name = "D3DDevice_Release", size = 84 }
+0x8292E118 = { name = "D3D_InitXBDMInterface", size = 240 }
+0x8292E078 = { name = "D3D_CommandHandler", size = 160 }
+0x82929EB0 = { name = "D3D_XBMProcessCommand", size = 692 }
+0x822C13D0 = { name = "_QueryPerformanceFrequency", size = 52 }
+0x82C83128 = { name = "CXrneMemory_Free", size = 20 }
+0x82C79C40 = { name = "CXrnmRefCounter_DecRef", size = 132 }
+0x82C7A930 = { name = "CXrnmEndpoint_CompleteCurrentRecv", size = 252 }
+0x82C7B680 = { name = "CXrnmEndpoint_QueueRecvToSocket", size = 364 }
+0x82BB5518 = { name = "hkCollisionDispatcher_hkCollisionDispatcher", size = 332 }
+0x82BB4EF8 = { name = "hkCollisionDispatcher_resetCreationFunctions", size = 356 }
+0x8229C210 = { name = "hkAgent3Bridge_registerAgent3", size = 168 }
+0x826E9EB8 = { name = "Vehicle_cAgencyBuggy_StaticCreateClass", size = 156 }
+0x8264A890 = { name = "Fun_Runtime_cClass_cClass", size = 200 }
+0x826CC860 = { name = "Vehicle_cVehicle_StaticCreateClass", size = 152 }
+0x826CC770 = { name = "Vehicle_cVehicle_SpawnFromPrototype", size = 24 }

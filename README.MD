@@ -1,5 +1,5 @@
 ## Requirements:
-- [Rexglue SDK 0.2.0](https://github.com/rexglue/rexglue-sdk)
+- [Rexglue SDK 0.2.1](https://github.com/rexglue/rexglue-sdk)
 - CMake
 - Ninja
 - Clang++/LLVM

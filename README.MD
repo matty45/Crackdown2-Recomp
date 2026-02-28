@@ -45,4 +45,4 @@ PPC_STUB(__imp__XNetLogonGetTitleID)```
  - Run the codegen by using the rexglue binary in the rexglue sdk install folder: ```rexglue codegen crackdown2_config.toml```
  - ```cmake --preset win-amd64-debug; cmake --build out/build/win-amd64-debug``` in the main folder
 
- # Status: Not In-Game.
+ # Status: In-game but not playable yet.

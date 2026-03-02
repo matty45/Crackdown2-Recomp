@@ -96,6 +96,8 @@ longjmp_address = 0x82F21740
 0x825A7358 = {}
 0x82bc9078 = {}
 0x82607a50 = {}
+0x82652840 = {}
+0x82683f60 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
@@ -344,3 +346,21 @@ longjmp_address = 0x82F21740
 0x8264A890 = { name = "Fun_Runtime_cClass_cClass", size = 200 }
 0x826CC860 = { name = "Vehicle_cVehicle_StaticCreateClass", size = 152 }
 0x826CC770 = { name = "Vehicle_cVehicle_SpawnFromPrototype", size = 24 }
+0x828FE940 = { name = "Content_CreateSave", size = 784 }
+0x828FEC50 = { name = "Content_WriteSave", size = 480 }
+0x828FF158 = { name = "Content_DeleteSave", size = 288 }
+0x828FEE30 = { name = "Content_ReadSave", size = 408 }
+0x828FE658 = { name = "Content_SaveKickoffTask_Update", size = 92 }
+0x828FE190 = { name = "Content_WriteFileTask_WriteFileTask", size = 168 }
+0x828FDE88 = { name = "Content_CloseContentTask_CloseContentTask", size = 100 }
+0x828FDE18 = { name = "Content_OpenContentTask_OpenContentTask", size = 108 }
+0x828FE5D0 = { name = "Content_SaveKickoffTask_SaveKickoffTask", size = 136 }
+0x828FD660 = { name = "Content_ContentSaveData_ContentSaveData", size = 128 }
+0x828FD7F8 = { name = "Content_CreateContentSaveData", size = 352 }
+0x828FD5F0 = { name = "Content_File_SetCache", size = 108 }
+0x82902C38 = { name = "Xenon_TaskQueue_Push", size = 156 }
+0x82253390 = { name = "Session_IsSignedInProfile", size = 100 }
+0x827678A0 = { name = "SaveGame_Save", size = 436 }
+0x8230D718 = { name = "XMemCpy", size = 756 }
+0x82955100 = { name = "XContentCalculateSize", size = 124 }
+0x82902698 = { name = "Xenon_NotifyListeners", size = 104 }

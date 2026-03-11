@@ -26,4 +26,7 @@
 // 	}
 // }
 
-
+bool force_fps_display() {
+    // Always return true to force FPS display  
+    return true;
+}

@@ -9,6 +9,11 @@ out_directory_path = "generated"
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
+[[midasm_hook]]  
+address = 0x8291680C  # The beq instruction location  
+name = "force_fps_display"  
+jump_address_on_true = 0x82916810
+
 [rexcrt]  
 RtlAllocateHeap = 0x82962D88
 RtlFreeHeap = 0x82963650

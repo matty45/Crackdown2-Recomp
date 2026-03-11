@@ -176,8 +176,8 @@ longjmp_address = 0x82F21740
 0x82312F38 = { name = "D3DDevice_SetScissorRect", size = 248 }
 0x8235BC58 = { name = "D3D_CDevice_KickOff", size = 256 }
 0x8291C498 = { name = "D3DDevice_SetRenderState_ScissorTestEnable", size = 12 }
-0x8230B8B8 = { name = "D3D_SetViewport", size = 600 }
-0x8291CC38 = { name = "D3DDevice_SetViewport", size = 124 }
+0x8230B8B8 = { name = "_D3D_SetViewport", size = 600 }
+0x8291CC38 = { name = "_D3DDevice_SetViewport", size = 124 }
 0x82928910 = { name = "D3D_DebugGpuDeadlock", size = 252 }
 0x82918A10 = { name = "D3D_CBlocker_Check", size = 216 }
 0x82960F38 = { name = "XapiThreadStartup", size = 128 }
@@ -187,7 +187,7 @@ longjmp_address = 0x82F21740
 0x82915FE0 = { name = "RWS_MainLoop_RenderThreadProc", size = 168 }
 0x82916280 = { name = "RWS_MainLoop_Render_Poll", size = 2820 }
 0x821E7E08 = { name = "_SetWaitableTimer", size = 108 }
-0x8295A030 = { name = "XapipCreateThread", size = 112 }
+0x8295A030 = { name = "_XapipCreateThread", size = 112 }
 0x82EE6390 = { name = "CRIERR_CallErr", size = 44 }
 0x82954E58 = { name = "_Closehandle", size = 72 }
 0x82955CE0 = { name = "_CreateThread", size = 12 }
@@ -217,7 +217,7 @@ longjmp_address = 0x82F21740
 0x82F1D3B0 = { name = "Fun_Runtime_StringPrintfTrunc_va_list", size = 12 }
 0x82956B38 = { name = "XUserCreateAchievementEnumerator", size = 132 }
 0x828FBF60 = { name = "Achievements_ReadAchievementsTask_Update", size = 888 }
-0x82917D10 = { name = "D3DResource_Release", size = 128 }
+0x82917D10 = { name = "_D3DResource_Release", size = 128 }
 0x82917560 = { name = "D3D_DestroyResource", size = 544 }
 0x8235B4D0 = { name = "D3DDevice_InsertCallback", size = 540 }
 0x827FC850 = { name = "VFX_cGlobalLightManager_Render", size = 940 }
@@ -296,7 +296,7 @@ longjmp_address = 0x82F21740
 0x82644928 = { name = "PackedFile_PackedFile_GenerateSearchIndex", size = 372 }
 0x8264DAF0 = { name = "Fun_Runtime_FunMalloc_XTL", size = 240 }
 0x8264D530 = { name = "Fun_Runtime_HandleUnexpectedIOFailure", size = 336 }
-0x8264DEF0 = { name = "XMemAlloc", size = 4 }
+0x8264DEF0 = { name = "_XMemAlloc", size = 4 }
 0x82970000 = { name = "D3DXCore_CFile_Open", size = 248 }
 0x82647AF8 = { name = "Fun_Runtime_cFile_Open", size = 240 }
 0x829553B0 = { name = "_CreateFileA", size = 500 }
@@ -312,10 +312,10 @@ longjmp_address = 0x82F21740
 0x82F39668 = { name = "_OutputDebugStringW", size = 108 }
 0x82958940 = { name = "XapiLookupString", size = 128 }
 0x82958888 = { name = "XapiShowErrorAndWait", size = 184 }
-0x82958208 = { name = "XGetOverlappedResult", size = 152 }
+0x82958208 = { name = "_XGetOverlappedResult", size = 152 }
 0x82955CD8 = { name = "_WaitForSingleObject", size = 8 }
 0x82959FC8 = { name = "_WaitForSingleObjectEx", size = 100 }
-0x82959FA8 = { name = "XapiFormatTimeOut", size = 32 }
+0x82959FA8 = { name = "_XapiFormatTimeOut", size = 32 }
 0x82F396D8 = { name = "_RtlOutputDebugString", size = 20 }
 0x82958010 = { name = "_GetOverlappedResult", size = 168 }
 0x82955B00 = { name = "_GetLastError", size = 4 }
@@ -341,7 +341,7 @@ longjmp_address = 0x82F21740
 0x8292E538 = { name = "D3D_TrainEDRAM", size = 228 }
 0x8292D898 = { name = "D3D_GetDrPixCounters", size = 16 }
 0x8222E790 = { name = "D3D_ResetAllState", size = 296 }
-0x82918C90 = { name = "D3DDevice_Release", size = 84 }
+0x82918C90 = { name = "_D3DDevice_Release", size = 84 }
 0x8292E118 = { name = "D3D_InitXBDMInterface", size = 240 }
 0x8292E078 = { name = "D3D_CommandHandler", size = 160 }
 0x82929EB0 = { name = "D3D_XBMProcessCommand", size = 692 }
@@ -376,7 +376,7 @@ longjmp_address = 0x82F21740
 0x82767A58 = { name = "SaveGame_Load", size = 476 }
 0x822325E8 = { name = "SaveGame_cLoadStream_StartChunk", size = 424 }
 0x827672B8 = { name = "SaveGame_cLoadStream_cLoadStream", size = 212 }
-0x8230D718 = { name = "XMemCpy", size = 756 }
+0x8230D718 = { name = "_XMemCpy", size = 756 }
 0x82955100 = { name = "XContentCalculateSize", size = 124 }
 0x8268E4F8 = { name = "PHYSICS_cPhysicsUniverse_OnLoadLevel", size = 1100 }
 0x82902698 = { name = "Xenon_NotifyListeners", size = 104 }
@@ -396,3 +396,5 @@ longjmp_address = 0x82F21740
 0x8271F7C8 = { name = "PLAYER_cPlayer_cPlayer", size = 1704 }
 0x82756238 = { name = "ORB_cSkillPickupManager_cSkillPickupManager", size = 224 }
 0x827564A0 = { name = "ORB_cSkillPickupManager_SetMaxPickups", size = 240 }
+0x82516AF8 = { name = "Anim_cProfileDataHand2HandFull_HandleAttributeData", size = 36636 }
+0x825161F8 = { name = "Anim_cHand2HandFullAnimationProfile_HandleAttributes", size = 72 }

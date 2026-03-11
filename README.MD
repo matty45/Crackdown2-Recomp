@@ -10,7 +10,7 @@
 ## To build:
  - Compile and install the rexglue SDK
  - Extract game disc and latest title update into the assets folder. (Including its xexp file)
- - Run the codegen by using the rexglue binary in the rexglue sdk install folder: ```rexglue codegen crackdown2_config.toml```
+ - Run the codegen by using the rexglue binary in the rexglue sdk install folder: ```rexglue codegen --max_jump_table_entries 519 crackdown2_config.toml```
  - ```cmake --preset win-amd64-debug; cmake --build out/build/win-amd64-debug``` in the main folder
 
  # Status: In-game but not playable yet.

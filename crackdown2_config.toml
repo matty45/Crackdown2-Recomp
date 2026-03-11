@@ -9,6 +9,54 @@ out_directory_path = "generated"
 setjmp_address = 0x82F21A60
 longjmp_address = 0x82F21740
 
+[rexcrt]  
+RtlAllocateHeap = 0x82962D88
+RtlFreeHeap = 0x82963650
+RtlSizeHeap = 0x82962000
+RtlReAllocateHeap = 0x82963948
+strncmp = 0x82F1D560
+strncpy = 0x82F18A08
+#strncpy_s = 0x82F1D900
+strchr = 0x82F1B8D0
+strstr = 0x823251A0
+strrchr = 0x82F1DF60
+strtok = 0x82246890
+#strtok_s = 0x82F24F60
+_stricmp = 0x82F1D770
+#strcpy = 0x82F24B50
+#strcpy_s = 0x822472B0
+lstrlenA = 0x82F38C40
+lstrcmpiA = 0x82F38BB0
+memcpy = 0x82F1E480
+memmove = 0x82F17F20
+memset = 0x82F21F60
+memchr = 0x82F1A480
+XMemCpy = 0x8230D718
+XMemSet = 0x82954CA0
+XMemSet128 = 0x82954EA0
+memcpy_s = 0x82F17BE0
+memmove_s = 0x82F17B20
+CreateFileA = 0x829553B0
+ReadFile = 0x821D0DD8
+WriteFile = 0x82955FC0
+SetFilePointer = 0x829555A8
+GetFileSize = 0x82956C90
+GetFileSizeEx = 0x82955E48
+SetEndOfFile = 0x821FE068
+FlushFileBuffers = 0x82F39510
+DeleteFileA = 0x82956270
+CloseHandle = 0x82954E58
+FindFirstFileA = 0x829561E0
+FindNextFileA = 0x82955A60
+CreateDirectoryA = 0x829560E8
+MoveFileA = 0x82F392F0
+SetFileAttributesA = 0x82F39AC0
+GetFileAttributesA = 0x82956178
+GetFileAttributesExA = 0x82F38ED8
+SetFilePointerEx = 0x82955EB8
+RemoveDirectoryA = 0x82956328
+GetDiskFreeSpaceExA = 0x82F388F0
+
 [functions]
 # Things that should be functions.
 0x8227B680 = {}
@@ -398,3 +446,5 @@ longjmp_address = 0x82F21740
 0x827564A0 = { name = "ORB_cSkillPickupManager_SetMaxPickups", size = 240 }
 0x82516AF8 = { name = "Anim_cProfileDataHand2HandFull_HandleAttributeData", size = 36636 }
 0x825161F8 = { name = "Anim_cHand2HandFullAnimationProfile_HandleAttributes", size = 72 }
+0x827EBF18 = { name = "VFX_cParticleEffectManager_GetTexture", size = 348 }
+0x824388E8 = { name = "Fun_Runtime_cString_cString", size = 392 }

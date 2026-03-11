@@ -8,19 +8,19 @@
 #include <rex/rex_app.h>
 
 class Crackdown2App : public rex::ReXApp {
- public:
-  using rex::ReXApp::ReXApp;
+public:
+    using rex::ReXApp::ReXApp;
 
-  static std::unique_ptr<rex::ui::WindowedApp> Create(
-      rex::ui::WindowedAppContext& ctx) {
-    return std::unique_ptr<Crackdown2App>(new Crackdown2App(ctx, "crackdown2",
-        PPCImageConfig));
-  }
+    static std::unique_ptr<rex::ui::WindowedApp> Create(
+        rex::ui::WindowedAppContext& ctx) {
+        return std::unique_ptr<Crackdown2App>(new Crackdown2App(ctx, "crackdown2",
+            PPCImageConfig));
+    }
 
-  // Override virtual hooks for customization:
-  // void OnPreSetup(rex::RuntimeConfig& config) override {}
-  // void OnPostSetup() override {}
-  // void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
-  // void OnShutdown() override {}
-  // void OnConfigurePaths(rex::PathConfig& paths) override {}
+    // Override virtual hooks for customization:
+    // void OnPreSetup(rex::RuntimeConfig& config) override {}
+    // void OnPostSetup() override {}
+    // void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
+    // void OnShutdown() override {}
+    // void OnConfigurePaths(rex::PathConfig& paths) override {}
 };

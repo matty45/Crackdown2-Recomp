@@ -219,7 +219,6 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x82D70470 = { name = "CThreadBase_Initialize", size = 376 }
 0x82D60768 = { name = "LEAPCORE_CLeapSystem_Initialize", size = 364 }
 0x826464A8 = { name = "LeaveCriticalSectionWrapper1", size = 8 }
-0x82F21F60 = { name = "_memset", size = 160 }
 0x82DB1110 = { name = "Scaleform_HeapPT_AllocEngine_freeSegment", size = 264 }
 0x82E2EEC0 = { name = "Scaleform_HeapPT_Granulator_allocSegment", size = 636 }
 0x82E2F368 = { name = "Scaleform_HeapPT_Granulator_Alloc", size = 184 }
@@ -242,7 +241,6 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x821E7E08 = { name = "_SetWaitableTimer", size = 108 }
 0x8295A030 = { name = "_XapipCreateThread", size = 112 }
 0x82EE6390 = { name = "CRIERR_CallErr", size = 44 }
-0x82954E58 = { name = "_Closehandle", size = 72 }
 0x82955CE0 = { name = "_CreateThread", size = 12 }
 0x826464B0 = { name = "Fun_Runtime_WrappedThreadFunc", size = 60 }
 0x82645240 = { name = "Fun_Runtime_cSpew_Default_SpewHandler", size = 520 }
@@ -250,12 +248,7 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x82895D50 = { name = "UI_ScreenControl_Render", size = 132 }
 0x828F21C0 = { name = "UI_Component_Render", size = 1752 }
 0x822EF5F0 = { name = "UI_Crackform_Movie_Render", size = 216 }
-0x82962D88 = { name = "_RtlAllocateHeap", size = 2164 }
-0x82963650 = { name = "_RtlFreeHeap", size = 676 }
 0x825CEDF0 = { name = "Cmd_cCommandProcessor_DumpAllHelpFunction", size = 148 }
-0x82962000 = { name = "_RtlSizeHeap", size = 168 }
-0x82963948 = { name = "_RtlReAllocateHeap", size = 2200 }
-0x82F1E480 = { name = "_memcpy", size = 1160 }
 0x82EC9D30 = { name = "criVmpv_CopyFrameYuvBuffers", size = 388 }
 0x82ECB3A8 = { name = "criVmpv_GetNextFrameInfo", size = 320 }
 0x82ECCA68 = { name = "criVdec_GetFramePointer", size = 52 }
@@ -314,7 +307,6 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x823AAC60 = { name = "VFX_cScatter_LoadScatter", size = 404 }
 0x827AB000 = { name = "VFX_FixupScatter", size = 380 }
 0x827AA320 = { name = "VFX_ScatterCacheInfo_ScatterCacheInfo", size = 244 }
-0x82956178 = { name = "_GetFileAttributesA", size = 100 }
 0x82647EC0 = { name = "Fun_Runtime_cFile_DoesFileExist", size = 120 }
 0x829138E8 = { name = "Demo_DemoModeActive", size = 112 }
 0x827D5D00 = { name = "XMConvertFloatToHalfStream", size = 7428 }
@@ -352,13 +344,8 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x8264DEF0 = { name = "_XMemAlloc", size = 4 }
 0x82970000 = { name = "D3DXCore_CFile_Open", size = 248 }
 0x82647AF8 = { name = "Fun_Runtime_cFile_Open", size = 240 }
-0x829553B0 = { name = "_CreateFileA", size = 500 }
-0x82956C90 = { name = "_GetFileSize", size = 104 }
-0x82955E48 = { name = "_GetFileSizeEx", size = 108 }
-0x821D0DD8 = { name = "_ReadFile", size = 380 }
 0x82F18020 = { name = "_wcslen", size = 36 }
 0x82EFF980 = { name = "SentientXls_DataFile_OnSuccessInner", size = 476 }
-0x82F39510 = { name = "_FlushFileBuffers", size = 60 }
 0x829AA960 = { name = "D3DX_error_exit", size = 76 }
 0x82A2D378 = { name = "D3DX_jpeg_destroy", size = 76 }
 0x82F38B70 = { name = "_OutputDebugStringA", size = 64 }
@@ -429,7 +416,6 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x82767A58 = { name = "SaveGame_Load", size = 476 }
 0x822325E8 = { name = "SaveGame_cLoadStream_StartChunk", size = 424 }
 0x827672B8 = { name = "SaveGame_cLoadStream_cLoadStream", size = 212 }
-0x8230D718 = { name = "_XMemCpy", size = 756 }
 0x82955100 = { name = "XContentCalculateSize", size = 124 }
 0x8268E4F8 = { name = "PHYSICS_cPhysicsUniverse_OnLoadLevel", size = 1100 }
 0x82902698 = { name = "Xenon_NotifyListeners", size = 104 }

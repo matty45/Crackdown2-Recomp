@@ -26,7 +26,10 @@
 // 	}
 // }
 
-bool force_fps_display() {
-    // Always return true to force FPS display  
+bool force_fps_display() { 
+    return true;
+}
+
+bool force_perf_graph_display() {
     return true;
 }

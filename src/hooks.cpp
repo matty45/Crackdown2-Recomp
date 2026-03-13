@@ -1,5 +1,5 @@
 #include <rex/ppc/types.h>
-
+#include <rex/cvar.h>
 
 // //https://github.com/rexglue/rexglue-sdk/issues/121
 // void FixBrokenSwitchTable_82812FA4(PPCRegister& r3) {
@@ -26,10 +26,13 @@
 // 	}
 // }
 
+REXCVAR_DEFINE_BOOL(c2_fps_display, false, "Debug", "Displays the game's debug fps overlay.");
+REXCVAR_DEFINE_BOOL(c2_perf_graph_display, false, "Debug", "Displays the game's debug performance graph overlay.");
+
 bool force_fps_display() { 
-    return true;
+    return REXCVAR_GET(c2_fps_display);
 }
 
 bool force_perf_graph_display() {
-    return true;
+    return REXCVAR_GET(c2_perf_graph_display);
 }

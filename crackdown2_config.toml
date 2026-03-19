@@ -46,26 +46,28 @@ XMemSet = 0x82954CA0
 XMemSet128 = 0x82954EA0
 memcpy_s = 0x82F17BE0
 memmove_s = 0x82F17B20
-CreateFileA = 0x829553B0
-ReadFile = 0x821D0DD8
-WriteFile = 0x82955FC0
-SetFilePointer = 0x829555A8
-GetFileSize = 0x82956C90
-GetFileSizeEx = 0x82955E48
-SetEndOfFile = 0x821FE068
-FlushFileBuffers = 0x82F39510
-DeleteFileA = 0x82956270
-CloseHandle = 0x82954E58
-FindFirstFileA = 0x829561E0
-FindNextFileA = 0x82955A60
-CreateDirectoryA = 0x829560E8
-MoveFileA = 0x82F392F0
-SetFileAttributesA = 0x82F39AC0
-GetFileAttributesA = 0x82956178
-GetFileAttributesExA = 0x82F38ED8
-SetFilePointerEx = 0x82955EB8
-RemoveDirectoryA = 0x82956328
-GetDiskFreeSpaceExA = 0x82F388F0
+
+# Getting an issue with the file stuff, cannot pinpoint the cause so this will be commented out for now.
+#CreateFileA = 0x829553B0
+#ReadFile = 0x821D0DD8
+#WriteFile = 0x82955FC0
+#SetFilePointer = 0x829555A8
+#GetFileSize = 0x82956C90
+#GetFileSizeEx = 0x82955E48
+#SetEndOfFile = 0x821FE068
+#FlushFileBuffers = 0x82F39510
+#DeleteFileA = 0x82956270
+#CloseHandle = 0x82954E58
+#FindFirstFileA = 0x829561E0
+#FindNextFileA = 0x82955A60
+#CreateDirectoryA = 0x829560E8
+#MoveFileA = 0x82F392F0
+#SetFileAttributesA = 0x82F39AC0
+#GetFileAttributesA = 0x82956178
+#GetFileAttributesExA = 0x82F38ED8
+#SetFilePointerEx = 0x82955EB8
+#RemoveDirectoryA = 0x82956328
+#GetDiskFreeSpaceExA = 0x82F388F0
 
 [functions]
 # Things that should be functions.
@@ -157,14 +159,21 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x82652840 = {}
 0x82683f60 = {}
 0x82cce6d0 = {}
+0x82D56D10 = {}
+0x82D56D18 = {}
+0x82EE68E8 = {}
+0x82EE68E0 = {}
+0x82EE68F0 = {}
+0x82D56D58 = {}
+0x82D56D20 = {}
+0x82D56D28 = {}
+0x82D56D30 = {}
+0x82D56D38 = {}
 0x821F2E78 = { size = 1660 }
 0x82E38428 = { size = 872 }
 0x828D31D8 = { size = 544 }
 0x8304A368 = { size = 172 }
 0x82EE68F8 = { size = 44 }
-0x82EE68E8 = { size = 80 }
-0x82EE68E0 = { size = 80 }
-0x82EE68F0 = { size = 44 }
 0x8290DBC8 = { size = 32 }
 0x8290DC08 = { size = 32 }
 0x8290DC28 = { size = 32 }
@@ -182,26 +191,19 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x82D56C88 = { size = 8 }
 0x82D56D48 = { size = 8 }
 0x82D56E38 = { size = 92 }
-0x82D56D10 = { size = 16 }
 0x82D56C90 = { size = 8 }
 0x82D56D50 = { size = 8 }
-0x82D56D18 = { size = 16 }
 0x82D56C98 = { size = 116 }
-0x82D56D58 = { size = 16 }
 0x82D56DD8 = { size = 76 }
 0x82D56A58 = { size = 336 }
-0x82D56D20 = { size = 16 }
 0x82D56C60 = { size = 8 }
 0x82D56D60 = { size = 8 }
 0x82D56BA8 = { size = 160 }
-0x82D56D28 = { size = 16 }
 0x82D56E28 = { size = 12 }
 0x82D56C68 = { size = 8 }
 0x82D56D68 = { size = 8 }
-0x82D56D30 = { size = 16 }
 0x82D56C70 = { size = 8 }
 0x82D56D70 = { size = 8 }
-0x82D56D38 = { size = 16 }
 0x828AD318 = { size = 20 }
 0x828AD32C = { size = 24 }
 0x82CD42E8 = { size = 40 }
@@ -447,3 +449,18 @@ GetDiskFreeSpaceExA = 0x82F388F0
 0x829551D8 = { name = "_XInputGetState", size = 12 }
 0x829551E8 = { name = "_XInputSetState", size = 200 }
 0x829551C8 = { name = "_XInputGetCapabilities", size = 4 }
+0x82F0FF70 = { name = "XLipRefreshComponents", size = 1352 }
+0x82885CF8 = { name = "XLip_XLipManager_XLipManager", size = 360 }
+0x82F089A8 = { name = "XLipSetMemoryManagement", size = 20 }
+0x82F0A638 = { name = "XLipInitialize", size = 388 }
+0x82F0CEF0 = { name = "XLipLoadCulturesFromFile", size = 300 }
+0x82F0FCA0 = { name = "XLipAddRoot", size = 424 }
+0x82F0FA10 = { name = "XLipAddComponent", size = 656 }
+0x829580B8 = { name = "XNotifyCreateListener", size = 8 }
+0x82885CA0 = { name = "XLip_XLipManager_GetInstance", size = 84 }
+0x82F13C70 = { name = "XLipOutputDebugFormatted", size = 140 }
+0x82916EB0 = { name = "InitialiseLocalisedStrings", size = 424 }
+0x826401E0 = { name = "Fun_Runtime_cFundamental_ReadNameAndVersionNumber", size = 872 }
+0x82640850 = { name = "Fun_Runtime_cFundamental_Init", size = 520 }
+0x82641148 = { name = "Fun_Runtime_FundamentalInit", size = 700 }
+0x8274E270 = { name = "MediaAccess_MediaAccessThreadProc", size = 132 }

@@ -507,6 +507,6 @@ memmove_s = 0x82F17B20
 0x82765938 = { name = "RwStreamSkip", size = 304 }
 0x825ECEB0 = { name = "cCrowdManager_ResetSwitchoverTimes", size = 92 }
 0x8281DF98 = { name = "Network_SetupNetGame", size = 152 }
-0x8281E030 = { name = "Network::NetHost", size = 128 }
+0x8281E030 = { name = "Network_NetHost", size = 128 }
 0x82824EA8 = { name = "Network_NetP2P_SetXrnmOptions", size = 1380 }
 0x82824D80 = { name = "Network_NetP2P_AddXrnmOption", size = 204 }

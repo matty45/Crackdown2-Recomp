@@ -546,3 +546,16 @@ memmove_s = 0x82F17B20
 0x823C1AA0 = { name = "Audio_cGameObject_RetTypeName", size = 568 }
 0x826FD3F8 = { name = "Vehicle_cAgencyTank_CheckForRocketGuns", size = 3572 }
 0x823C04A0 = { name = "GameRenderer_FindPartialNamedFrame", size = 292 }
+0x825D8860 = { name = "PHYSICS_EnableVehicleTrainingFunction", size = 172 }
+0x825D5DA0 = { name = "PHYSICS_ToggleOrbs", size = 148 }
+0x825D8A78 = { name = "PHYSICS_HavokTimersEnabledFunction", size = 108 }
+0x8268E4F8 = { name = "PHYSICS_cPhysicsUniverse_OnLoadLevel", size = 1100 }
+0x825D8A08 = { name = "PHYSICS_HavokVisualDebuggerEnabledFunction", size = 108 }
+0x82BA8210 = { name = "hkMonitorStreamAnalyzer_hkMonitorStreamAnalyzer", size = 144 }
+0x82691ED0 = { name = "PHYSICS_cPhysicsUniverse_HandleAttributes", size = 1668 }
+0x825D2488 = { name = "Core_PostReset", size = 224 }
+0x8271E538 = { name = "PLAYER_DebugFunctionToggleInfiniteWorld", size = 160 }
+0x824A7358 = { name = "AI_ShowBehaviourDebug", size = 24 }
+0x824A7190 = { name = "AI_FreakPop", size = 24 }
+0x824A5440 = { name = "AI_SpawnNewScroungers", size = 180 }
+0x824A53F0 = { name = "AI_SpawnNewReaperAgents", size = 80 }

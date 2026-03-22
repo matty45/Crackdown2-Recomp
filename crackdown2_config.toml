@@ -424,7 +424,6 @@ memmove_s = 0x82F17B20
 0x822325E8 = { name = "SaveGame_cLoadStream_StartChunk", size = 424 }
 0x827672B8 = { name = "SaveGame_cLoadStream_cLoadStream", size = 212 }
 0x82955100 = { name = "XContentCalculateSize", size = 124 }
-0x8268E4F8 = { name = "PHYSICS_cPhysicsUniverse_OnLoadLevel", size = 1100 }
 0x82902698 = { name = "Xenon_NotifyListeners", size = 104 }
 0x82EFF4D8 = { name = "Xls_DataFile_GetDataFileSize", size = 240 }
 0x82EFF018 = { name = "Xls_DataFile_GetDataFileSizeInner", size = 148 }
@@ -552,7 +551,7 @@ memmove_s = 0x82F17B20
 0x8268E4F8 = { name = "PHYSICS_cPhysicsUniverse_OnLoadLevel", size = 1100 }
 0x825D8A08 = { name = "PHYSICS_HavokVisualDebuggerEnabledFunction", size = 108 }
 0x82BA8210 = { name = "hkMonitorStreamAnalyzer_hkMonitorStreamAnalyzer", size = 144 }
-0x82691ED0 = { name = "PHYSICS_cPhysicsUniverse_HandleAttributes", size = 1668 }
+0x82691ED0 = { name = "PHYSICS_cPhysicsUniverse_HandleAttributes", size = 1668 }g
 0x825D2488 = { name = "Core_PostReset", size = 224 }
 0x8271E538 = { name = "PLAYER_DebugFunctionToggleInfiniteWorld", size = 160 }
 0x824A7358 = { name = "AI_ShowBehaviourDebug", size = 24 }

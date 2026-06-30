@@ -1,4 +1,3 @@
-#include <rex/ppc/types.h>
 #include <rex/cvar.h>
 
 // //https://github.com/rexglue/rexglue-sdk/issues/121

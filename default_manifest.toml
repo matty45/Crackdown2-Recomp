@@ -63,61 +63,67 @@ memmove_s = 0x82F17B20
 
 [functions]
 # Things that should be functions.
-0x822E2110 = {}
-0x822E4B40 = {}
-0x8243E310 = {}
-0x8243E628 = {}
-0x82441688 = {}
-0x82531CF8 = {}
-0x825F9970 = {}
-0x825F9A58 = {}
-0x826084D0 = {}
-0x8260B5A0 = {}
-0x8260B648 = {}
-0x82610978 = {}
-0x82611BC8 = {}
-0x8261A610 = {}
-0x8261A688 = {}
-0x8261AAB0 = {}
-0x82666B50 = {}
-0x826B8E40 = {}
-0x826BE8F0 = {}
-0x826C36D0 = {}
-0x826F9210 = {}
-0x826FAD60 = {}
-0x82704388 = {}
-0x827049F0 = {}
-0x82706E48 = {}
-0x8270BDA8 = {}
-0x8272F1E0 = {}
-0x828258B8 = {}
-0x82C457C0 = {}
-0x82CBBF78 = {}
-0x82FA6DF8 = {}
-0x822E6118 = {}
-0x8243E0B8 = {}
-0x82440FF8 = {}
-0x82460998 = {}
-0x82530F68 = {}
-0x825F9300 = {}
-0x82606B88 = {}
-0x8260AE40 = {}
-0x8260E7B0 = {}
-0x826199E8 = {}
-0x826615F0 = {}
-0x826BDB58 = {}
-0x826C0188 = {}
-0x826F7190 = {}
-0x826F9FB0 = {}
-0x82703990 = {}
-0x827066D0 = {}
-0x82708090 = {}
-0x8272D390 = {}
-0x82BAC868 = {}
-0x82C61FA0 = {}
-0x82268D28 = {}
+0x82268D28 = { size = 204 }
+0x8243E0B8 = { size = 240 }
+0x8243E310 = { size = 520 }
+0x8243E628 = { size = 88 }
+0x82440FF8 = { size = 196 }
+0x82441688 = { size = 512 }
+0x82460998 = { size = 96 }
+0x824611C8 = { size = 92 }
+0x82530F68 = { size = 2296 }
+0x82531CF8 = { size = 248 }
+0x825F9300 = { size = 520 }
+0x825F9970 = { size = 228 }
+0x825F9A58 = { size = 84 }
+0x82606B88 = { size = 356 }
+0x826084D0 = { size = 124 }
+0x8260AE40 = { size = 80 }
+0x8260B5A0 = { size = 164 }
+0x8260B648 = { size = 320 }
+0x8260E7B0 = { size = 256 }
+0x82610978 = { size = 516 }
+0x82611BC8 = { size = 608 }
+0x826199E8 = { size = 1384 }
+0x8261A610 = { size = 120 }
+0x8261A688 = { size = 276 }
+0x8261AAB0 = { size = 496 }
+0x826615F0 = { size = 648 }
+0x82666B50 = { size = 324 }
+0x8268DD88 = { size = 572 }
+0x826B8E40 = { size = 3536 }
+0x826BDB58 = { size = 152 }
+0x826BE8F0 = { size = 232 }
+0x826C0188 = { size = 172 }
+0x826C36D0 = { size = 4528 }
+0x826F7190 = { size = 404 }
+0x826F9210 = { size = 92 }
+0x826F9FB0 = { size = 3132 }
+0x82703990 = { size = 184 }
+0x82704388 = { size = 896 }
+0x827049F0 = { size = 616 }
+0x826FAD60 = { size = 2964 }
+0x827066D0 = { size = 1044 }
+0x82706E48 = { size = 1180 }
+0x82708090 = { size = 172 }
+0x8270BDA8 = { size = 668 }
+0x8272D390 = { size = 760 }
+0x8272F1E0 = { size = 620 }
+0x82BAC868 = { size = 104 }
+0x82C457C0 = { size = 404 }
+0x82C61FA0 = { size = 172 }
+0x82CBBF78 = { size = 480 }
+0x82FA6DF8 = { size = 88 }
+0x82705150 = { size = 408 }
+0x827052E8 = { size = 472 }
+0x827074F0 = { size = 340 }
+0x822E2110 = { size = 204 }
+0x822E4B40 = { size = 760 }
+0x822E5690 = { size = 1232 }
+0x822E6118 = { size = 908 }
+0x828258B8 = { size = 1028 }
+0x823C3C00 = { size = 2008 }
 0x822C1408 = {}
-0x822E5690 = {}
 0x822E5EE0 = {}
 0x8235A5E8 = {}
 0x8235C7E8 = {}
@@ -560,7 +566,6 @@ memmove_s = 0x82F17B20
 0x82D4C5A0 = { name = "AK_StreamMgr_CAkIOThread_Init", size = 252 }
 0x8236AFF0 = { name = "_SetThreadPriority", size = 128 }
 0x82830178 = { name = "Audio_Initialise", size = 468 }
-0x822E1AC8 = { name = "Fun_Runtime_MemoryLateTerm", size = 904 }
 0x82830F70 = { name = "Audio_cFileLocationResolver_LoadGenericPackFiles", size = 632 }
 0x828308B0 = { name = "Audio_cFileLocationResolver_Init", size = 224 }
 0x822C0A58 = { name = "Audio_Engine_Init", size = 836 }

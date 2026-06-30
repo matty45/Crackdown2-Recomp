@@ -1,6 +1,5 @@
 // crackdown2 - ReXGlue Recompiled Project
 //
-// This file is yours to edit. 'rexglue migrate' will NOT overwrite it.
 // Customize your app by overriding virtual hooks from rex::ReXApp.
 
 #pragma once
@@ -18,6 +17,7 @@ class Crackdown2App : public rex::ReXApp {
   }
 
   // Override virtual hooks for customization:
+  // void OnPostInitLogging() override {}
   // void OnPreSetup(rex::RuntimeConfig& config) override {}
   // void OnLoadXexImage(std::string& xex_image) override {}
   // void OnPostSetup() override {}

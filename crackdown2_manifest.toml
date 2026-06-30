@@ -2,21 +2,11 @@
 
 [project]
 name = "crackdown2"
-sdk_version = "0.8.1.4"
+sdk_version = "0.8.1"
 game_root = "assets"
 
 [entrypoint]
 file_path = "assets/default.xex"
 out_directory_path = "generated/default"
 includes = ["default_manifest.toml"]
-
-[analysis]
-max_jump_extension = 65536
-max_jump_table_entries = 519
-data_region_threshold = 16
-large_function_threshold = 1048576
-exception_handler_funcs = []
-
-patch_file_path = "assets/default.xexp"
-patched_file_path = "assets/default_patched.xex"
 

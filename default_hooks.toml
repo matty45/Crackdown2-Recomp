@@ -7,3 +7,22 @@ jump_address_on_true = 0x82916810
 address = 0x82369650
 name = "force_perf_graph_display"  
 jump_address_on_true = 0x82369654
+
+# Hook after FindHandler returns — r3=handler, r30=pStrName, r31=pStrType  
+[[midasm_hook]]  
+address   = 0x82F069E0  
+name      = "Hook_RWS_HandlerFound"  
+registers = ["r3", "r27", "r30", "r31"]
+  
+# Hook before bctrl — r3=handler, r10=vtable fn ptr  
+[[midasm_hook]]  
+address   = 0x82F06A48  
+name      = "Hook_RWS_VtableCall"  
+registers = ["r3", "r10"]  
+  
+# Hook after bctrl — r3=loaded resource result  
+[[midasm_hook]]  
+address   = 0x82F06A4C  
+name      = "Hook_RWS_ResourceLoaded"  
+registers = ["r3"]  
+after_instruction = false

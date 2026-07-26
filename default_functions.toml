@@ -583,3 +583,11 @@ longjmp_address = 0x82F21740
 0x8293AE28 = { name = "luaL_loadbuffer", size = 52 }
 0x8293B730 = { name = "luaL_loadfile", size = 484 }
 0x82F069B0 = { name = "RWS_LoadResource", size = 228 }
+0x82F06DB8 = { name = "RWS_CResourceHandler_FindHandler", size = 140 }
+0x82F06D00 = { name = "GetCResourceHandlerList", size = 124 }
+0x82752EB0 = { name = "ResourceManager_cStreamingResourceHandler_LoadStreaming", size = 364 }
+0x82F06740 = { name = "RWS_CResourceManager_Add", size = 208 }
+0x8264B328 = { name = "Fun_Runtime_cSafeDeletable_cSafeDeletable", size = 48 }
+0x82F04D68 = { name = "RWS_CResource_SetName", size = 200 }
+0x82F04CA0 = { name = "RWS_CResource_SetType", size = 200 }
+0x82B84958 = { name = "Fun_Runtime_Hash32String", size = 56 }

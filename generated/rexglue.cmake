@@ -14,7 +14,7 @@ else()
     if(REXSDK_VERSION)
         find_package(rexglue ${REXSDK_VERSION} EXACT QUIET CONFIG)
     else()
-        find_package(rexglue 0.8.1.4 QUIET CONFIG)
+        find_package(rexglue 0.9.0 QUIET CONFIG)
     endif()
     if(NOT rexglue_FOUND)
         message(FATAL_ERROR
@@ -41,7 +41,7 @@ endif()
 
 # Configure a rexglue target with SDK libraries and platform settings.
 # Call after add_executable() in your CMakeLists.txt.
-# Usage: rexglue_setup_target(<target>)
+# Usage: rexglue_setup_target(<target> [GPU_PLUGINS xenos])
 macro(rexglue_setup_target target_name)
     target_sources(${target_name} PRIVATE ${REXGLUE_ENTRYPOINT_GENERATED_SOURCES})
     target_include_directories(${target_name} PRIVATE
@@ -50,7 +50,12 @@ macro(rexglue_setup_target target_name)
         ${REXGLUE_ENTRYPOINT_INCLUDE_DIR}
     )
     target_link_libraries(${target_name} PRIVATE rex::runtime)
-    rexglue_configure_target(${target_name})
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/metadata/icons")
+        rexglue_embed_metadata(${target_name}
+            DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/metadata/icons"
+            PREFIX "icons")
+    endif()
+    rexglue_configure_target(${target_name} ${ARGN})
 endmacro()
 
 # Include DLL module shared library targets if codegen has generated them

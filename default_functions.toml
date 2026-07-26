@@ -290,7 +290,8 @@ longjmp_address = 0x82F21740
 0x82B1D3E8 = { name = "XGRAPHICS_AS_GetStateF", size = 112 }
 0x82B49DF8 = { name = "XGRAPHICS__FloatToString", size = 248 }
 0x825D0CF0 = { name = "GDb_ConsoleOutput", size = 92 }
-0x82F1D3B0 = { name = "Fun_Runtime_StringPrintfTrunc_va_list", size = 12 }
+0x82F1D3B0 = { name = "rex__vsnwprintf_s", size = 12 }
+0x82338AD0 = { name = "rex__vsnwprintf_s_l", size = 356 }
 0x82956B38 = { name = "XUserCreateAchievementEnumerator", size = 132 }
 0x828FBF60 = { name = "Achievements_ReadAchievementsTask_Update", size = 888 }
 0x82917D10 = { name = "_D3DResource_Release", size = 128 }
@@ -579,3 +580,6 @@ longjmp_address = 0x82F21740
 0x824A7190 = { name = "AI_FreakPop", size = 24 }
 0x824A5440 = { name = "AI_SpawnNewScroungers", size = 180 }
 0x824A53F0 = { name = "AI_SpawnNewReaperAgents", size = 80 }
+0x8293AE28 = { name = "luaL_loadbuffer", size = 52 }
+0x8293B730 = { name = "luaL_loadfile", size = 484 }
+0x82F069B0 = { name = "RWS_LoadResource", size = 228 }

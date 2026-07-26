@@ -1,4 +1,6 @@
 #include <rex/cvar.h>
+#include <rex/hook.h>
+#include <rex/system/format.h>
 
 // //https://github.com/rexglue/rexglue-sdk/issues/121
 // void FixBrokenSwitchTable_82812FA4(PPCRegister& r3) {
@@ -27,6 +29,7 @@
 
 REXCVAR_DEFINE_BOOL(c2_fps_display, false, "Debug", "Displays the game's debug fps overlay.");
 REXCVAR_DEFINE_BOOL(c2_perf_graph_display, false, "Debug", "Displays the game's debug performance graph overlay.");
+REXCVAR_DEFINE_BOOL(gdb_console_output_log, false, "Debug", "Log GDb_ConsoleOutput calls");
 
 bool force_fps_display() { 
     return REXCVAR_GET(c2_fps_display);
@@ -34,4 +37,27 @@ bool force_fps_display() {
 
 bool force_perf_graph_display() {
     return REXCVAR_GET(c2_perf_graph_display);
+}
+
+REX_HOOK_RAW(GDb_ConsoleOutput) {
+    uint32_t format_ptr = ctx.r3.u32;
+    if (!format_ptr) {
+        ctx.r3.s64 = -1;
+        return;
+    }
+
+    auto format = rex::memory::GuestPtr<const u16*>(base, format_ptr);
+
+    rex::system::format::StackArgList args(ctx, base, 1);   // varargs start at r4 (index 1)  
+    rex::system::format::WideStringFormatData data(format);
+
+    int32_t count = format_core(base, data, args, true);  // true = wide  
+    if (REXCVAR_GET(gdb_console_output_log) && count > 0) {
+        auto wstr = data.wstr();
+        // wstr is std::wstring; narrow for logging (fine for ASCII debug output)  
+        std::string narrow(wstr.begin(), wstr.end());
+        while (!narrow.empty() && std::isspace((unsigned char)narrow.back()))
+            narrow.pop_back();
+        REXLOG_INFO("GDb_ConsoleOutput: {}", narrow);
+    }
 }

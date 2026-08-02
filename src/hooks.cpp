@@ -63,37 +63,77 @@ REX_HOOK_RAW(GDb_ConsoleOutput) {
     }
 }
 
-void Hook_RWS_HandlerFound(
-    PPCRegister& r3,
-    PPCRegister& r27,
-    PPCRegister& r30,
-    PPCRegister& r31)
-{
+void LogLoadResourceArgs(PPCRegister& r3, PPCRegister& r4, PPCRegister& r5,
+    PPCRegister& r6, PPCRegister& r7, PPCRegister& r8) {
+
     if (!REXCVAR_GET(c2_resource_log))
         return;
 
     uint8_t* base = rex::system::kernel_state()->memory()->virtual_membase();
-    using namespace rex::memory;
 
-    const char* name = r30.u32 ? GuestPtr<const char*>(base, r30.u32) : "(null)";
-    const char* type = r31.u32 ? GuestPtr<const char*>(base, r31.u32) : "(null)";
-    const char* path = r27.u32 ? GuestPtr<const char*>(base, r27.u32) : "(null)";
+    auto pStrName = rex::memory::GuestPtr<const char*>(base, r3.u32);
+    auto pResId = rex::memory::GuestPtr<const char*>(base, r4.u32);
+    auto pStrType = rex::memory::GuestPtr<const char*>(base, r5.u32);
+    auto pResourcePath = rex::memory::GuestPtr<const char*>(base, r6.u32);
 
-    REXLOG_DEBUG("Loading resource: name='{}' type='{}' path='{}'",
-        name, type, path);
-    REXLOG_DEBUG("  -> handler={:#x}", r3.u32);
+    REXLOG_DEBUG(
+        "RWS::LoadResource: Loading Resource: pStrName='{}' pResId={:#x} (guid[0]={:#x}) pStrType='{}' "
+        "pResourcePath='{}' pStream={:#x} uiStreamSize={}",
+        pStrName ? pStrName : "(null)", r4.u32,
+        pResId ? *pResId : 0,
+        pStrType ? pStrType : "(null)",
+        pResourcePath ? pResourcePath : "(null)", r7.u32, r8.u32);
 }
 
-void Hook_RWS_VtableCall(PPCRegister& r3, PPCRegister& r10) {
+void LogHandlerFound(PPCRegister& r3, PPCRegister& r30) {
+
+	if (!REXCVAR_GET(c2_resource_log))
+        return;
+
+    uint8_t* base = rex::system::kernel_state()->memory()->virtual_membase();
+    auto pStrName = rex::memory::GuestPtr<const char*>(base, r30.u32);
+
+    if (r3.u32 != 0) {
+        REXLOG_DEBUG("RWS::LoadResource: Handler for '{}' found: {:#x}", pStrName ? pStrName : "(null)", r3.u32);
+    }
+    else {
+        REXLOG_DEBUG("RWS::LoadResource: Handler for '{}' NOT found. Ignoring Resource.", pStrName ? pStrName : "(null)");
+    }
+}
+
+void LogUsingStreaming(PPCRegister& r30) {
+
     if (!REXCVAR_GET(c2_resource_log))
         return;
 
-    REXLOG_DEBUG("  vtable fn={:#x} on handler={:#x}", r10.u32, r3.u32);
+    uint8_t* base = rex::system::kernel_state()->memory()->virtual_membase();
+    auto pStrName = rex::memory::GuestPtr<const char*>(base, r30.u32);
+
+	REXLOG_DEBUG("RWS::LoadResource: Loading '{}' as a streaming resource.", pStrName ? pStrName : "(null)");
 }
 
-void Hook_RWS_ResourceLoaded(PPCRegister& r3) {
+void LogCustomResourceHandler(PPCRegister& r30, PPCRegister& ctr) {
+
     if (!REXCVAR_GET(c2_resource_log))
         return;
 
-    REXLOG_DEBUG("  -> loaded resource={:#x}", r3.u32);
+    uint8_t* base = rex::system::kernel_state()->memory()->virtual_membase();
+    const char* pStrName = rex::memory::GuestPtr<const char*>(base, r30.u32);
+    REXLOG_DEBUG("RWS::LoadResource: Custom resource loading function is being used for '{}', address of the function is: 0x{:08X}",
+        pStrName ? pStrName : "(null)", ctr.u32);
+}
+
+void LogResourceAddCheck(PPCRegister& r30, PPCRegister& r29) {
+
+    if (!REXCVAR_GET(c2_resource_log))
+        return;
+
+    if (r29.u32 == 0) {
+        return;  // Add is not called when the vtable load returned null  
+    }
+
+    uint8_t* base = rex::system::kernel_state()->memory()->virtual_membase();
+    auto pStrName = rex::memory::GuestPtr<const char*>(base, r30.u32);
+
+    REXLOG_DEBUG("RWS::LoadResource: RWS::CResourceManager::Add will be called for '{}'", pStrName ? pStrName : "(null)");
 }

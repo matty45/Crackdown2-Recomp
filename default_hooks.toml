@@ -8,21 +8,29 @@ address = 0x82369650
 name = "force_perf_graph_display"  
 jump_address_on_true = 0x82369654
 
-# Hook after FindHandler returns — r3=handler, r30=pStrName, r31=pStrType  
 [[midasm_hook]]  
-address   = 0x82F069E0  
-name      = "Hook_RWS_HandlerFound"  
-registers = ["r3", "r27", "r30", "r31"]
-  
-# Hook before bctrl — r3=handler, r10=vtable fn ptr  
+address = 0x82F069B8  
+name = "LogLoadResourceArgs"  
+registers = ["r3", "r4", "r5", "r6", "r7", "r8"]
+
 [[midasm_hook]]  
-address   = 0x82F06A48  
-name      = "Hook_RWS_VtableCall"  
-registers = ["r3", "r10"]  
-  
-# Hook after bctrl — r3=loaded resource result  
+address = 0x82F069E0  
+name = "LogHandlerFound"  
+registers = ["r3", "r30"]
+
 [[midasm_hook]]  
-address   = 0x82F06A4C  
-name      = "Hook_RWS_ResourceLoaded"  
-registers = ["r3"]  
-after_instruction = false
+address = 0x82F06A0C  
+name = "LogUsingStreaming"  
+registers = ["r30"]
+
+[[midasm_hook]]  
+address = 0x82F06A44  
+name = "LogCustomResourceHandler"  
+registers = ["r30", "ctr"]  
+after_instruction = true
+
+[[midasm_hook]]  
+address = 0x82F06A50  
+name = "LogResourceAddCheck"  
+registers = ["r30", "r29"]
+

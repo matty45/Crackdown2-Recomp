@@ -1,0 +1,21 @@
+diff --git a/src/graphics/vulkan/render_target_cache.cpp b/src/graphics/vulkan/render_target_cache.cpp
+index 024ebec..96007d0 100644
+--- a/src/graphics/vulkan/render_target_cache.cpp
++++ b/src/graphics/vulkan/render_target_cache.cpp
+@@ -3744,6 +3744,16 @@ VkShaderModule VulkanRenderTargetCache::GetTransferShader(TransferShaderKey key)
+                                         builder.makeUintConstant(8), builder.makeUintConstant(24));
+         }
+       }
++    } else if (source_stencil[0] != spv::NoResult) {
++      // Depth / stencil source for stencil bit output: only the stencil view
++      // is bound (no depth), so the packed value is just the stencil, in the
++      // low 8 bits like in the merged depth / stencil layout. Without this,
++      // packed stayed unset, the stencil bit kill below was skipped, and every
++      // bit draw set its bit everywhere - stencil became 0xFF (devices without
++      // VK_EXT_shader_stencil_export, e.g. PowerVR, where Crackdown 2 then
++      // turned red through a depth-to-color reinterpretation).
++      packed = builder.createBinOp(spv::OpBitwiseAnd, type_uint, source_stencil[0],
++                                   builder.makeUintConstant(UINT8_MAX));
+     }
+     switch (mode.output) {
+       case TransferOutput::kColor: {

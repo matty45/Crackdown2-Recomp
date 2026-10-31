@@ -1,0 +1,180 @@
+diff --git a/include/rex/graphics/vulkan/deferred_command_buffer.h b/include/rex/graphics/vulkan/deferred_command_buffer.h
+index 9d2a848..95a07f8 100644
+--- a/include/rex/graphics/vulkan/deferred_command_buffer.h
++++ b/include/rex/graphics/vulkan/deferred_command_buffer.h
+@@ -263,7 +263,10 @@ class DeferredCommandBuffer {
+ 
+   // Dynamic rendering (VK_KHR_dynamic_rendering / Vulkan 1.3).
+   void CmdVkBeginRendering(const VkRenderingInfo* rendering_info);
+-  void CmdVkEndRendering() { WriteCommand(Command::kVkEndRendering, 0); }
++  void CmdVkEndRendering() {
++    ShrinkCurrentRenderingArea();
++    WriteCommand(Command::kVkEndRendering, 0);
++  }
+ 
+   void CmdVkResetQueryPool(VkQueryPool query_pool, uint32_t first_query, uint32_t query_count) {
+     auto& args = *reinterpret_cast<ArgsVkResetQueryPool*>(
+@@ -310,6 +313,10 @@ class DeferredCommandBuffer {
+   }
+ 
+   void CmdVkSetScissor(uint32_t first_scissor, uint32_t scissor_count, const VkRect2D* scissors) {
++    if (first_scissor == 0 && scissor_count) {
++      current_scissor_ = scissors[0];
++      current_scissor_known_ = true;
++    }
+     const size_t header_size = rex::align(sizeof(ArgsVkSetScissor), alignof(VkRect2D));
+     uint8_t* args_ptr = reinterpret_cast<uint8_t*>(
+         WriteCommand(Command::kVkSetScissor, header_size + sizeof(VkRect2D) * scissor_count));
+@@ -583,6 +590,18 @@ class DeferredCommandBuffer {
+ 
+   // uintmax_t to ensure uint64_t and pointer alignment of all structures.
+   std::vector<uintmax_t> command_stream_;
++
++  // Render area shrinking (vulkan_shrink_render_area): on tile-based GPUs every
++  // dynamic rendering pass loads and stores its whole render area, and the
++  // render target cache always passes the full (EDRAM-sized) attachment. When
++  // a pass ends, its render area is reduced to the union of the scissors of
++  // its draws and its clear rectangles.
++  void ShrinkCurrentRenderingArea();
++  size_t rendering_begin_offset_ = SIZE_MAX;
++  VkRect2D current_scissor_ = {};
++  bool current_scissor_known_ = false;
++  VkRect2D rendering_begin_scissor_ = {};
++  bool rendering_begin_scissor_known_ = false;
+ };
+ 
+ }  // namespace rex::graphics::vulkan
+diff --git a/src/graphics/vulkan/deferred_command_buffer.cpp b/src/graphics/vulkan/deferred_command_buffer.cpp
+index b49e033..89080e5 100644
+--- a/src/graphics/vulkan/deferred_command_buffer.cpp
++++ b/src/graphics/vulkan/deferred_command_buffer.cpp
+@@ -9,6 +9,9 @@
+  * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
+  */
+ 
++#include <climits>
++#include <rex/cvar.h>
++#include <algorithm>
+ #include <cstddef>
+ #include <cstdint>
+ #include <cstring>
+@@ -28,8 +31,109 @@ DeferredCommandBuffer::DeferredCommandBuffer(const VulkanCommandProcessor& comma
+   command_stream_.reserve(initial_size / sizeof(uintmax_t));
+ }
+ 
++REXCVAR_DEFINE_BOOL(vulkan_shrink_render_area, true, "GPU/Vulkan",
++                    "Shrink each dynamic rendering pass's render area to the union of the "
++                    "scissors and clear rectangles used in it (saves load/store bandwidth on "
++                    "tile-based GPUs).");
++
+ void DeferredCommandBuffer::Reset() {
+   command_stream_.clear();
++  rendering_begin_offset_ = SIZE_MAX;
++  current_scissor_known_ = false;
++}
++
++void DeferredCommandBuffer::ShrinkCurrentRenderingArea() {
++  size_t begin = rendering_begin_offset_;
++  rendering_begin_offset_ = SIZE_MAX;
++  if (begin == SIZE_MAX || !REXCVAR_GET(vulkan_shrink_render_area)) {
++    return;
++  }
++  auto* begin_header = reinterpret_cast<CommandHeader*>(command_stream_.data() + begin);
++  if (begin_header->command != Command::kVkBeginRendering) {
++    return;
++  }
++  auto* args_ptr = reinterpret_cast<uint8_t*>(command_stream_.data() + begin +
++                                               kCommandHeaderSizeElements);
++  auto& args = *reinterpret_cast<ArgsVkBeginRendering*>(args_ptr);
++  // A load op other than LOAD affects the whole render area, keep it.
++  size_t attachment_offset =
++      rex::align(sizeof(ArgsVkBeginRendering), alignof(VkRenderingAttachmentInfo));
++  uint32_t attachment_count = args.color_attachment_count + uint32_t(args.has_depth_attachment) +
++                              uint32_t(args.has_stencil_attachment);
++  for (uint32_t i = 0; i < attachment_count; ++i) {
++    const auto& attachment = *reinterpret_cast<const VkRenderingAttachmentInfo*>(
++        args_ptr + attachment_offset + sizeof(VkRenderingAttachmentInfo) * i);
++    if (attachment.imageView != VK_NULL_HANDLE &&
++        attachment.loadOp != VK_ATTACHMENT_LOAD_OP_LOAD) {
++      return;
++    }
++  }
++  const VkRect2D full = args.render_area;
++  int32_t x0 = INT32_MAX, y0 = INT32_MAX, x1 = INT32_MIN, y1 = INT32_MIN;
++  auto add = [&](const VkRect2D& r) {
++    x0 = std::min(x0, r.offset.x);
++    y0 = std::min(y0, r.offset.y);
++    x1 = std::max(x1, r.offset.x + int32_t(r.extent.width));
++    y1 = std::max(y1, r.offset.y + int32_t(r.extent.height));
++  };
++  VkRect2D scissor = rendering_begin_scissor_;
++  bool scissor_known = rendering_begin_scissor_known_;
++  size_t offset = begin;
++  while (offset < command_stream_.size()) {
++    const auto& header = *reinterpret_cast<const CommandHeader*>(command_stream_.data() + offset);
++    const uint8_t* cmd_args =
++        reinterpret_cast<const uint8_t*>(command_stream_.data() + offset + kCommandHeaderSizeElements);
++    switch (header.command) {
++      case Command::kVkSetScissor: {
++        const auto& sargs = *reinterpret_cast<const ArgsVkSetScissor*>(cmd_args);
++        if (sargs.first_scissor == 0 && sargs.scissor_count) {
++          scissor = *reinterpret_cast<const VkRect2D*>(
++              cmd_args + rex::align(sizeof(ArgsVkSetScissor), alignof(VkRect2D)));
++          scissor_known = true;
++        }
++      } break;
++      case Command::kVkDraw:
++      case Command::kVkDrawIndexed:
++        if (!scissor_known) {
++          return;  // Can't bound this draw - keep the full area.
++        }
++        add(scissor);
++        break;
++      case Command::kVkClearAttachments: {
++        const auto& cargs = *reinterpret_cast<const ArgsVkClearAttachments*>(cmd_args);
++        size_t rects_offset =
++            rex::align(rex::align(sizeof(ArgsVkClearAttachments), alignof(VkClearAttachment)) +
++                           sizeof(VkClearAttachment) * cargs.attachment_count,
++                       alignof(VkClearRect));
++        const auto* rects = reinterpret_cast<const VkClearRect*>(cmd_args + rects_offset);
++        for (uint32_t i = 0; i < cargs.rect_count; ++i) {
++          add(rects[i].rect);
++        }
++      } break;
++      default:
++        break;
++    }
++    offset += kCommandHeaderSizeElements + header.arguments_size_elements;
++  }
++  VkRect2D shrunk;
++  if (x0 > x1) {
++    // Nothing drawn - a minimal area still performs the load / store layout
++    // work without touching the contents.
++    shrunk = {full.offset, {1, 1}};
++  } else {
++    int32_t fx1 = full.offset.x + int32_t(full.extent.width);
++    int32_t fy1 = full.offset.y + int32_t(full.extent.height);
++    x0 = std::clamp(x0, full.offset.x, fx1);
++    y0 = std::clamp(y0, full.offset.y, fy1);
++    x1 = std::clamp(x1, x0, fx1);
++    y1 = std::clamp(y1, y0, fy1);
++    if (x1 <= x0 || y1 <= y0) {
++      shrunk = {full.offset, {1, 1}};
++    } else {
++      shrunk = {{x0, y0}, {uint32_t(x1 - x0), uint32_t(y1 - y0)}};
++    }
++  }
++  args.render_area = shrunk;
+ }
+ 
+ void DeferredCommandBuffer::Execute(VkCommandBuffer command_buffer) {
+@@ -388,6 +492,9 @@ void DeferredCommandBuffer::CmdVkBeginRendering(const VkRenderingInfo* rendering
+     arguments_size += sizeof(VkRenderingAttachmentInfo);
+   }
+ 
++  rendering_begin_offset_ = command_stream_.size();
++  rendering_begin_scissor_ = current_scissor_;
++  rendering_begin_scissor_known_ = current_scissor_known_;
+   uint8_t* args_ptr =
+       reinterpret_cast<uint8_t*>(WriteCommand(Command::kVkBeginRendering, arguments_size));
+   auto& args = *reinterpret_cast<ArgsVkBeginRendering*>(args_ptr);

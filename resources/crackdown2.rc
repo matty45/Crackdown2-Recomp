@@ -1,0 +1,3 @@
+// Windows application icon for the crackdown2 recomp executable.
+// The lowest-numbered icon resource becomes the exe / taskbar icon.
+1 ICON "crackdown2.ico"

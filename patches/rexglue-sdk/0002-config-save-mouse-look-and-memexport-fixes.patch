@@ -1,0 +1,697 @@
+diff --git a/include/rex/graphics/d3d12/command_processor.h b/include/rex/graphics/d3d12/command_processor.h
+index 96d362b..16b8189 100644
+--- a/include/rex/graphics/d3d12/command_processor.h
++++ b/include/rex/graphics/d3d12/command_processor.h
+@@ -369,6 +369,27 @@ class D3D12CommandProcessor : public CommandProcessor {
+   bool IssueDraw_MemexportReadbackFullPath(uint32_t total_size);
+   bool IssueDraw_MemexportReadbackFastPath(uint32_t total_size);
+ 
++  // Asynchronous frame-batched memexport readback (readback_memexport_async):
++  // ranges are accumulated per frame, copied with a single barrier + copy batch
++  // into a ring slot when the frame closes, and the newest slot the GPU has
++  // completed is copied into guest memory (without waiting) when a frame opens.
++  void AsyncMemexportReadbackRecordFrame();
++  void AsyncMemexportReadbackConsumeCompleted();
++  void AsyncMemexportReadbackShutdown();
++  static constexpr uint32_t kAsyncMemexportSlots = 4;
++  static constexpr uint32_t kAsyncMemexportMaxBytes = 64 * 1024 * 1024;
++  struct AsyncMemexportSlot {
++    ID3D12Resource* buffer = nullptr;
++    void* mapped_data = nullptr;
++    uint32_t size = 0;
++    uint64_t submission_written = 0;
++    bool pending = false;
++    std::vector<draw_util::MemExportRange> ranges;
++  };
++  AsyncMemexportSlot async_memexport_slots_[kAsyncMemexportSlots];
++  uint32_t async_memexport_slot_next_ = 0;
++  std::vector<draw_util::MemExportRange> async_memexport_frame_ranges_;
++
+   // Returns a buffer for reading GPU data back to the CPU. Assuming
+   // synchronizing immediately after use. Always in COPY_DEST state.
+   ID3D12Resource* RequestReadbackBuffer(uint32_t size);
+diff --git a/include/rex/input/mnk/mnk_input_driver.h b/include/rex/input/mnk/mnk_input_driver.h
+index c8751b7..0e008d3 100644
+--- a/include/rex/input/mnk/mnk_input_driver.h
++++ b/include/rex/input/mnk/mnk_input_driver.h
+@@ -10,6 +10,7 @@
+  */
+ #pragma once
+ 
++#include <chrono>
+ #include <rex/input/input_driver.h>
+ #include <rex/ui/window.h>
+ #include <rex/ui/window_listener.h>
+@@ -81,6 +82,16 @@ class MnkInputDriver final : public InputDriver,
+   // Filled on the UI thread, drained on the guest thread, hence the lock.
+   float mouse_dx_ = 0.0f;
+   float mouse_dy_ = 0.0f;
++  // Stick deflection derived from the mouse for the current poll window.
++  std::chrono::steady_clock::time_point mouse_window_start_{};
++  int32_t mouse_window_rx_ = 0;
++  int32_t mouse_window_ry_ = 0;
++  double mouse_budget_x_ = 0.0;
++  double mouse_budget_y_ = 0.0;
++  std::chrono::steady_clock::time_point mouse_debug_last_{};
++  uint32_t mouse_debug_polls_ = 0;
++  uint32_t mouse_debug_windows_ = 0;
++  double mouse_debug_px_ = 0.0;
+ 
+   // UI thread only.
+   int32_t prev_mouse_x_ = 0;
+diff --git a/src/core/cvar.cpp b/src/core/cvar.cpp
+index 228728d..c5a682f 100644
+--- a/src/core/cvar.cpp
++++ b/src/core/cvar.cpp
+@@ -11,6 +11,7 @@
+ #include <cctype>
+ #include <charconv>
+ #include <filesystem>
++#include <cstdio>
+ #include <fstream>
+ #include <mutex>
+ #include <optional>
+@@ -535,13 +536,37 @@ std::vector<std::string> ListModifiedFlags() {
+   return result;
+ }
+ 
++// Quote a TOML basic string: backslashes (Windows paths), quotes and control
++// characters must be escaped or the file does not parse back.
++std::string TomlQuote(const std::string& value) {
++  std::string out = "\"";
++  for (unsigned char c : value) {
++    switch (c) {
++      case '\\': out += "\\\\"; break;
++      case '"': out += "\\\""; break;
++      case '\n': out += "\\n"; break;
++      case '\r': out += "\\r"; break;
++      case '\t': out += "\\t"; break;
++      default:
++        if (c < 0x20) {
++          char buf[8];
++          std::snprintf(buf, sizeof(buf), "\\u%04X", c);
++          out += buf;
++        } else {
++          out += static_cast<char>(c);
++        }
++    }
++  }
++  return out + "\"";
++}
++
+ std::string SerializeToTOML() {
+   std::lock_guard lock(GetRegistryMutex());
+   std::string result;
+   for (const auto& entry : GetRegistryStorage()) {
+     if (entry.getter() != entry.default_value) {
+       if (entry.type == FlagType::String) {
+-        result += entry.name + " = \"" + entry.getter() + "\"\n";
++        result += entry.name + " = " + TomlQuote(entry.getter()) + "\n";
+       } else {
+         result += entry.name + " = " + entry.getter() + "\n";
+       }
+@@ -556,7 +581,7 @@ std::string SerializeToTOML(std::string_view category) {
+   for (const auto& entry : GetRegistryStorage()) {
+     if (entry.category == category && entry.getter() != entry.default_value) {
+       if (entry.type == FlagType::String) {
+-        result += entry.name + " = \"" + entry.getter() + "\"\n";
++        result += entry.name + " = " + TomlQuote(entry.getter()) + "\n";
+       } else {
+         result += entry.name + " = " + entry.getter() + "\n";
+       }
+diff --git a/src/graphics/d3d12/command_processor.cpp b/src/graphics/d3d12/command_processor.cpp
+index 19874a5..8be9114 100644
+--- a/src/graphics/d3d12/command_processor.cpp
++++ b/src/graphics/d3d12/command_processor.cpp
+@@ -39,6 +39,15 @@ REXCVAR_DEFINE_BOOL(d3d12_readback_memexport, false, "GPU/D3D12",
+                     "Read data written by memory export in shaders on the CPU")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+ 
++REXCVAR_DEFINE_BOOL(readback_memexport_async, false, "GPU/D3D12",
++                    "Read memexport results back to the CPU asynchronously: all memexport "
++                    "ranges of a frame are copied with one batched copy when the frame is "
++                    "closed, and the newest copy the GPU has completed is written to guest "
++                    "memory when the next frame opens, with no GPU/CPU stall. Results arrive "
++                    "1-3 frames late, which suits GPU occlusion/visibility feedback. "
++                    "Overrides readback_memexport_fast when readback_memexport is enabled.")
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
+ REXCVAR_DEFINE_BOOL(d3d12_readback_resolve, false, "GPU/D3D12",
+                     "Read render-to-texture results on the CPU")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+@@ -1667,6 +1676,7 @@ void D3D12CommandProcessor::ShutdownContext() {
+     }
+   }
+   memexport_readback_buffers_.clear();
++  AsyncMemexportReadbackShutdown();
+ 
+   ui::d3d12::util::ReleaseAndNull(scratch_buffer_);
+   scratch_buffer_size_ = 0;
+@@ -2718,7 +2728,13 @@ bool D3D12CommandProcessor::IssueDraw(xenos::PrimitiveType primitive_type, uint3
+         memexport_total_size += memexport_range.size_bytes;
+       }
+       if (memexport_total_size != 0) {
+-        if (REXCVAR_GET(readback_memexport_fast)) {
++        if (REXCVAR_GET(readback_memexport_async)) {
++          // Just remember the ranges; AsyncMemexportReadbackRecordFrame copies
++          // them all at once when the frame closes.
++          async_memexport_frame_ranges_.insert(async_memexport_frame_ranges_.end(),
++                                               memexport_ranges_.begin(),
++                                               memexport_ranges_.end());
++        } else if (REXCVAR_GET(readback_memexport_fast)) {
+           IssueDraw_MemexportReadbackFastPath(memexport_total_size);
+         } else {
+           IssueDraw_MemexportReadbackFullPath(memexport_total_size);
+@@ -2870,6 +2886,144 @@ bool D3D12CommandProcessor::IssueDraw_MemexportReadbackFastPath(uint32_t total_s
+   return true;
+ }
+ 
++void D3D12CommandProcessor::AsyncMemexportReadbackRecordFrame() {
++  std::vector<draw_util::MemExportRange>& ranges = async_memexport_frame_ranges_;
++  if (ranges.empty()) {
++    return;
++  }
++
++  // Coalesce the frame's ranges (the same buffers are exported to by many
++  // draws) so one copy per distinct region is recorded.
++  std::sort(ranges.begin(), ranges.end(),
++            [](const draw_util::MemExportRange& a, const draw_util::MemExportRange& b) {
++              return a.base_address_dwords < b.base_address_dwords;
++            });
++  std::vector<draw_util::MemExportRange> merged;
++  merged.reserve(ranges.size());
++  for (const draw_util::MemExportRange& range : ranges) {
++    uint32_t begin = range.base_address_dwords << 2;
++    uint32_t end = begin + range.size_bytes;
++    if (!merged.empty()) {
++      draw_util::MemExportRange& last = merged.back();
++      uint32_t last_begin = last.base_address_dwords << 2;
++      uint32_t last_end = last_begin + last.size_bytes;
++      if (begin <= last_end) {
++        if (end > last_end) {
++          last.size_bytes = end - last_begin;
++        }
++        continue;
++      }
++    }
++    merged.push_back(range);
++  }
++  ranges.clear();
++
++  uint64_t total_size = 0;
++  for (const draw_util::MemExportRange& range : merged) {
++    total_size += range.size_bytes;
++  }
++  if (!total_size || total_size > kAsyncMemexportMaxBytes) {
++    return;
++  }
++
++  AsyncMemexportSlot& slot = async_memexport_slots_[async_memexport_slot_next_];
++  if (slot.pending && slot.submission_written > submission_completed_) {
++    // The GPU is more than kAsyncMemexportSlots frames behind - never stall,
++    // just drop this frame's readback; the guest keeps the last delivered data.
++    return;
++  }
++
++  uint32_t needed_size = AlignReadbackBufferSize(uint32_t(total_size));
++  if (!slot.buffer || slot.size < needed_size) {
++    if (slot.buffer) {
++      // Not pending (consumed, so completed) or completed - safe to release.
++      if (slot.mapped_data) {
++        slot.buffer->Unmap(0, nullptr);
++      }
++      slot.buffer->Release();
++      slot.buffer = nullptr;
++      slot.mapped_data = nullptr;
++      slot.size = 0;
++    }
++    const ui::d3d12::D3D12Provider& provider = GetD3D12Provider();
++    ID3D12Device* device = provider.GetDevice();
++    D3D12_RESOURCE_DESC buffer_desc;
++    ui::d3d12::util::FillBufferResourceDesc(buffer_desc, needed_size, D3D12_RESOURCE_FLAG_NONE);
++    ID3D12Resource* buffer = nullptr;
++    if (FAILED(device->CreateCommittedResource(
++            &ui::d3d12::util::kHeapPropertiesReadback, provider.GetHeapFlagCreateNotZeroed(),
++            &buffer_desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&buffer)))) {
++      REXGPU_ERROR("Failed to create a {} MB async memexport readback buffer", needed_size >> 20);
++      return;
++    }
++    D3D12_RANGE read_range = {0, needed_size};
++    void* mapped_data = nullptr;
++    if (FAILED(buffer->Map(0, &read_range, &mapped_data))) {
++      buffer->Release();
++      REXGPU_ERROR("Failed to map the async memexport readback buffer");
++      return;
++    }
++    slot.buffer = buffer;
++    slot.mapped_data = mapped_data;
++    slot.size = needed_size;
++  }
++
++  shared_memory_->UseAsCopySource();
++  SubmitBarriers();
++  ID3D12Resource* shared_memory_buffer = shared_memory_->GetBuffer();
++  uint32_t readback_offset = 0;
++  for (const draw_util::MemExportRange& range : merged) {
++    deferred_command_list_.D3DCopyBufferRegion(slot.buffer, readback_offset, shared_memory_buffer,
++                                               range.base_address_dwords << 2, range.size_bytes);
++    readback_offset += range.size_bytes;
++  }
++  slot.ranges = std::move(merged);
++  slot.submission_written = submission_current_;
++  slot.pending = true;
++  async_memexport_slot_next_ = (async_memexport_slot_next_ + 1) % kAsyncMemexportSlots;
++}
++
++void D3D12CommandProcessor::AsyncMemexportReadbackConsumeCompleted() {
++  AsyncMemexportSlot* newest = nullptr;
++  for (AsyncMemexportSlot& slot : async_memexport_slots_) {
++    if (slot.pending && slot.submission_written <= submission_completed_ &&
++        (!newest || slot.submission_written > newest->submission_written)) {
++      newest = &slot;
++    }
++  }
++  if (!newest) {
++    return;
++  }
++  const uint8_t* readback_bytes = static_cast<const uint8_t*>(newest->mapped_data);
++  for (const draw_util::MemExportRange& range : newest->ranges) {
++    void* guest = memory_->TranslatePhysical(range.base_address_dwords << 2);
++    if (guest) {
++      std::memcpy(guest, readback_bytes, range.size_bytes);
++    }
++    readback_bytes += range.size_bytes;
++  }
++  // Older completed slots are superseded by the newest one.
++  for (AsyncMemexportSlot& slot : async_memexport_slots_) {
++    if (slot.pending && slot.submission_written <= submission_completed_) {
++      slot.pending = false;
++    }
++  }
++}
++
++void D3D12CommandProcessor::AsyncMemexportReadbackShutdown() {
++  for (AsyncMemexportSlot& slot : async_memexport_slots_) {
++    if (slot.buffer) {
++      if (slot.mapped_data) {
++        slot.buffer->Unmap(0, nullptr);
++      }
++      slot.buffer->Release();
++    }
++    slot = AsyncMemexportSlot();
++  }
++  async_memexport_slot_next_ = 0;
++  async_memexport_frame_ranges_.clear();
++}
++
+ bool D3D12CommandProcessor::IssueCopy() {
+ #if XE_GPU_FINE_GRAINED_DRAW_SCOPES
+   SCOPE_profile_cpu_f("gpu");
+@@ -3293,6 +3447,9 @@ bool D3D12CommandProcessor::BeginSubmission(bool is_guest_command) {
+       }
+       frame_completed_ = frame;
+     }
++    // Deliver the newest batched memexport readback the GPU has finished to
++    // the guest before this frame's draws (readback_memexport_async).
++    AsyncMemexportReadbackConsumeCompleted();
+   }
+ 
+   if (!submission_open_) {
+@@ -3402,6 +3559,10 @@ bool D3D12CommandProcessor::EndSubmission(bool is_swap) {
+   if (submission_open_) {
+     assert_false(scratch_buffer_used_);
+ 
++    if (is_closing_frame) {
++      AsyncMemexportReadbackRecordFrame();
++    }
++
+     if (active_occlusion_query_.valid && occlusion_query_heap_) {
+       deferred_command_list_.D3DEndQuery(occlusion_query_heap_.Get(), D3D12_QUERY_TYPE_OCCLUSION,
+                                          active_occlusion_query_.host_index);
+diff --git a/src/graphics/util/draw.cpp b/src/graphics/util/draw.cpp
+index 305380e..c65fa5e 100644
+--- a/src/graphics/util/draw.cpp
++++ b/src/graphics/util/draw.cpp
+@@ -655,12 +655,22 @@ void AddMemExportRanges(const RegisterFile& regs, const Shader& shader,
+     switch (stream.format) {
+       case xenos::ColorFormat::k_8_A:
+       case xenos::ColorFormat::k_8_B:
+-      case xenos::ColorFormat::k_8_8_8_8_A:
+-        REXGPU_WARN(
+-            "Memexport done to an unresearched format {}, report the game to "
+-            "Xenia developers!",
+-            format_info.name);
++      case xenos::ColorFormat::k_8_8_8_8_A: {
++        // This runs once per memexporting draw. Titles that memexport every
++        // frame (Crackdown 2 occlusion/visibility) emit thousands of these a
++        // second, which both floods the log and burns GPU-thread CPU time on
++        // formatting, so only report each format once.
++        static uint64_t warned_formats = 0;
++        uint64_t format_bit = uint64_t(1) << (uint32_t(stream.format) & 63);
++        if (!(warned_formats & format_bit)) {
++          warned_formats |= format_bit;
++          REXGPU_WARN(
++              "Memexport done to an unresearched format {}, report the game to "
++              "Xenia developers!",
++              format_info.name);
++        }
+         break;
++      }
+       default:
+         break;
+     }
+diff --git a/src/input/mnk/mnk_input_driver.cpp b/src/input/mnk/mnk_input_driver.cpp
+index 3f9422d..09f4495 100644
+--- a/src/input/mnk/mnk_input_driver.cpp
++++ b/src/input/mnk/mnk_input_driver.cpp
+@@ -29,6 +29,8 @@ REXCVAR_DEFINE_BOOL(mnk_mouse, false, "Input",
+                     "from the keybind_rstick_* keys only");
+ REXCVAR_DEFINE_DOUBLE(mnk_sensitivity, 1.0, "Input", "Mouse sensitivity for right stick")
+     .range(0.01, 10.0);
++REXCVAR_DEFINE_BOOL(mnk_mouse_debug, false, "Input",
++                    "Log mouse-look statistics (polls, movement, stick output) every 2 seconds");
+ 
+ REXCVAR_DEFINE_STRING(keybind_a, "Semicolon,Space", "Input/Keybinds/Controller", "A button");
+ REXCVAR_DEFINE_STRING(keybind_b, "Quote,Backspace", "Input/Keybinds/Controller", "B button");
+@@ -66,11 +68,13 @@ namespace {
+ constexpr rex::input::DeviceId kMnkDevice = static_cast<rex::input::DeviceId>(0x4D4E4B00);
+ 
+ // Bind values are a comma-separated list of alternatives, each optionally
+-// carrying modifier prefixes: "Q,I" or "Shift+W". Modifier matching is exact,
+-// so "Up" stays silent while Shift is held and "Shift+Up" stays silent without
+-// it. That is what lets the D-pad share the arrow keys. A consequence is
+-// that binding a bare modifier name ("Shift") can never fire, since holding it
+-// makes the live mask non-zero while the bind wants zero.
++// carrying modifier prefixes: "Q,I" or "Shift+W". A token needs its own
++// modifiers held, and it is overshadowed only when some other bind has the
++// same key with exactly the live modifiers: "Up" stays silent while Shift is
++// held because "Shift+Up" exists (that is what lets the D-pad share the arrow
++// keys), while "W" keeps working with Shift held, since nothing binds
++// "Shift+W". A bare modifier name ("Shift" for crouch) is a normal key: its
++// own bit is ignored when comparing modifiers.
+ constexpr uint8_t kModShift = 1u << 0;
+ constexpr uint8_t kModCtrl = 1u << 1;
+ constexpr uint8_t kModAlt = 1u << 2;
+@@ -122,15 +126,65 @@ std::string_view TrimSpaces(std::string_view s) {
+   return s;
+ }
+ 
+-bool TokenPressed(const bool (&key_down)[256], std::string_view token, uint8_t live_mods) {
+-  uint8_t want = TakeModifiers(token);
+-  if (want != live_mods) {
+-    return false;
++uint8_t ModifierBitOfKey(rex::ui::VirtualKey vk) {
++  switch (vk) {
++    case rex::ui::VirtualKey::kShift:
++    case rex::ui::VirtualKey::kLShift:
++    case rex::ui::VirtualKey::kRShift:
++      return kModShift;
++    case rex::ui::VirtualKey::kControl:
++    case rex::ui::VirtualKey::kLControl:
++    case rex::ui::VirtualKey::kRControl:
++      return kModCtrl;
++    case rex::ui::VirtualKey::kMenu:
++    case rex::ui::VirtualKey::kLMenu:
++    case rex::ui::VirtualKey::kRMenu:
++      return kModAlt;
++    default:
++      return 0;
+   }
++}
++
++// Every (modifiers, key) pair bound by any keybind_* cvar, rebuilt per poll:
++// 8 modifier masks x 256 keys. Used to tell whether a more specific bind
++// overshadows a token under the live modifiers.
++struct BoundKeys {
++  bool bound[8][256] = {};
++};
++
++template <typename Fn>
++void ForEachToken(const std::string& cvar_val, Fn&& fn) {
++  std::string_view rest(cvar_val);
++  while (!rest.empty()) {
++    size_t comma = rest.find(',');
++    std::string_view token = rest.substr(0, comma);
++    if (comma == std::string_view::npos) {
++      rest = std::string_view();
++    } else {
++      rest.remove_prefix(comma + 1);
++    }
++    token = TrimSpaces(token);
++    if (!token.empty()) {
++      fn(token);
++    }
++  }
++}
++
++bool TokenPressed(const bool (&key_down)[256], std::string_view token, uint8_t live_mods,
++                  const BoundKeys& bound) {
++  uint8_t want = TakeModifiers(token);
+   rex::ui::VirtualKey vk = rex::ui::ParseVirtualKey(token);
+   if (vk == rex::ui::VirtualKey::kNone) {
+     return false;
+   }
++  // A modifier bound as a key: its own bit is not a modifier for itself.
++  uint8_t compare_mods = live_mods & ~ModifierBitOfKey(vk);
++  if ((compare_mods & want) != want) {
++    return false;
++  }
++  if (compare_mods != want && bound.bound[compare_mods & 7][static_cast<uint16_t>(vk) & 255]) {
++    return false;  // a bind with exactly these modifiers takes this key
++  }
+   uint16_t idx = static_cast<uint16_t>(vk);
+   return idx < 256 && key_down[idx];
+ }
+@@ -200,23 +254,26 @@ bool MnkInputDriver::IsEnabled() const {
+   return REXCVAR_GET(mnk_mode);
+ }
+ 
+-static bool IsBindPressed(const bool (&key_down)[256], const std::string& cvar_val) {
++static bool IsBindPressed(const bool (&key_down)[256], const std::string& cvar_val,
++                          const BoundKeys& bound) {
+   const uint8_t live_mods = LiveModifiers(key_down);
+-  std::string_view rest(cvar_val);
+-  while (!rest.empty()) {
+-    size_t comma = rest.find(',');
+-    std::string_view token = rest.substr(0, comma);
+-    if (comma == std::string_view::npos) {
+-      rest = std::string_view();
+-    } else {
+-      rest.remove_prefix(comma + 1);
++  bool pressed = false;
++  ForEachToken(cvar_val, [&](std::string_view token) {
++    if (!pressed && TokenPressed(key_down, token, live_mods, bound)) {
++      pressed = true;
+     }
+-    token = TrimSpaces(token);
+-    if (!token.empty() && TokenPressed(key_down, token, live_mods)) {
+-      return true;
++  });
++  return pressed;
++}
++
++static void AddBoundTokens(BoundKeys& bound, const std::string& cvar_val) {
++  ForEachToken(cvar_val, [&](std::string_view token) {
++    uint8_t mods = TakeModifiers(token);
++    rex::ui::VirtualKey vk = rex::ui::ParseVirtualKey(token);
++    if (vk != rex::ui::VirtualKey::kNone) {
++      bound.bound[mods & 7][static_cast<uint16_t>(vk) & 255] = true;
+     }
+-  }
+-  return false;
++  });
+ }
+ 
+ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+@@ -274,74 +331,156 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+ 
+   std::lock_guard lock(state_mutex_);
+ 
++  BoundKeys bound;
++  AddBoundTokens(bound, REXCVAR_GET(keybind_a));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_b));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_x));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_y));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_left_shoulder));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_right_shoulder));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_lstick_press));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_rstick_press));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_back));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_start));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_guide));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_dpad_up));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_dpad_down));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_dpad_left));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_dpad_right));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_left_trigger));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_right_trigger));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_lstick_left));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_lstick_right));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_lstick_up));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_lstick_down));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_rstick_left));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_rstick_right));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_rstick_up));
++  AddBoundTokens(bound, REXCVAR_GET(keybind_rstick_down));
++
+   uint16_t buttons = 0;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_a)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_a), bound))
+     buttons |= X_INPUT_GAMEPAD_A;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_b)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_b), bound))
+     buttons |= X_INPUT_GAMEPAD_B;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_x)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_x), bound))
+     buttons |= X_INPUT_GAMEPAD_X;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_y)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_y), bound))
+     buttons |= X_INPUT_GAMEPAD_Y;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_left_shoulder)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_left_shoulder), bound))
+     buttons |= X_INPUT_GAMEPAD_LEFT_SHOULDER;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_right_shoulder)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_right_shoulder), bound))
+     buttons |= X_INPUT_GAMEPAD_RIGHT_SHOULDER;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_press)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_press), bound))
+     buttons |= X_INPUT_GAMEPAD_LEFT_THUMB;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_press)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_press), bound))
+     buttons |= X_INPUT_GAMEPAD_RIGHT_THUMB;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_back)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_back), bound))
+     buttons |= X_INPUT_GAMEPAD_BACK;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_start)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_start), bound))
+     buttons |= X_INPUT_GAMEPAD_START;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_guide)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_guide), bound))
+     buttons |= X_INPUT_GAMEPAD_GUIDE;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_up)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_up), bound))
+     buttons |= X_INPUT_GAMEPAD_DPAD_UP;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_down)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_down), bound))
+     buttons |= X_INPUT_GAMEPAD_DPAD_DOWN;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_left)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_left), bound))
+     buttons |= X_INPUT_GAMEPAD_DPAD_LEFT;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_right)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_dpad_right), bound))
+     buttons |= X_INPUT_GAMEPAD_DPAD_RIGHT;
+ 
+-  uint8_t lt = IsBindPressed(key_down_, REXCVAR_GET(keybind_left_trigger)) ? 0xFF : 0;
+-  uint8_t rt = IsBindPressed(key_down_, REXCVAR_GET(keybind_right_trigger)) ? 0xFF : 0;
++  uint8_t lt = IsBindPressed(key_down_, REXCVAR_GET(keybind_left_trigger), bound) ? 0xFF : 0;
++  uint8_t rt = IsBindPressed(key_down_, REXCVAR_GET(keybind_right_trigger), bound) ? 0xFF : 0;
+ 
+   int32_t lx = 0;
+   int32_t ly = 0;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_left)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_left), bound))
+     lx -= INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_right)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_right), bound))
+     lx += INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_up)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_up), bound))
+     ly += INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_down)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_lstick_down), bound))
+     ly -= INT16_MAX;
+ 
+   int32_t rx = 0;
+   int32_t ry = 0;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_left)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_left), bound))
+     rx -= INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_right)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_right), bound))
+     rx += INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_up)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_up), bound))
+     ry += INT16_MAX;
+-  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_down)))
++  if (IsBindPressed(key_down_, REXCVAR_GET(keybind_rstick_down), bound))
+     ry -= INT16_MAX;
+ 
++  // Games poll the pad several times per frame (and from more than one
++  // thread), so the mouse movement is turned into a stick deflection once per
++  // short window and every poll inside that window gets the same value;
++  // draining the delta on the first poll left the later ones - usually the one
++  // the camera code acts on - with a zero stick.
++  const auto now = std::chrono::steady_clock::now();
++  constexpr auto kMouseWindow = std::chrono::milliseconds(12);
+   if (REXCVAR_GET(mnk_mouse) && IsMouseLookActive()) {
+-    double sensitivity = REXCVAR_GET(mnk_sensitivity);
+-    constexpr double kBaseScale = 200.0;
+-    rx += static_cast<int32_t>(double(mouse_dx_) * sensitivity * kBaseScale);
+-    ry += static_cast<int32_t>(double(-mouse_dy_) * sensitivity * kBaseScale);
+-  }
+-  // Drained unconditionally: deltas keep accumulating in OnMouseMove while the
+-  // mouse is off, and toggling it on would otherwise dump the whole backlog
+-  // into one frame as a camera snap.
+-  mouse_dx_ = 0.0f;
+-  mouse_dy_ = 0.0f;
++    ++mouse_debug_polls_;
++    if (now - mouse_window_start_ >= kMouseWindow) {
++      double sensitivity = REXCVAR_GET(mnk_sensitivity);
++      constexpr double kBaseScale = 200.0;
++      // A stick only turns the camera as fast as full deflection allows, and
++      // games ignore small deflections (XInput's right-stick deadzone is 26%),
++      // so mouse distance becomes stick *time*: the movement is banked and paid
++      // out at up to full deflection per window, never below 30% - a flick holds
++      // the stick fully for several windows, a nudge gives one short push.
++      mouse_budget_x_ += double(mouse_dx_) * sensitivity * kBaseScale;
++      mouse_budget_y_ += double(-mouse_dy_) * sensitivity * kBaseScale;
++      constexpr double kMaxBudget = 6.0 * INT16_MAX;  // at most ~100 ms of turn after a flick
++      mouse_budget_x_ = std::clamp(mouse_budget_x_, -kMaxBudget, kMaxBudget);
++      mouse_budget_y_ = std::clamp(mouse_budget_y_, -kMaxBudget, kMaxBudget);
++      auto pay_out = [](double& budget) -> int32_t {
++        constexpr double kFull = double(INT16_MAX);
++        constexpr double kMin = 0.3 * kFull;  // just above XInput's 26% right-stick deadzone
++        double magnitude = std::fabs(budget);
++        if (magnitude < 1.0) return 0;
++        double out = std::max(std::min(magnitude, kFull), kMin);
++        double sign = budget < 0.0 ? -1.0 : 1.0;
++        budget -= sign * out;
++        if (budget * sign < 0.0) budget = 0.0;  // never swing back the other way
++        return static_cast<int32_t>(sign * out);
++      };
++      mouse_window_rx_ = pay_out(mouse_budget_x_);
++      mouse_window_ry_ = pay_out(mouse_budget_y_);
++      mouse_debug_px_ += std::fabs(double(mouse_dx_)) + std::fabs(double(mouse_dy_));
++      ++mouse_debug_windows_;
++      mouse_dx_ = 0.0f;
++      mouse_dy_ = 0.0f;
++      mouse_window_start_ = now;
++    }
++    rx += mouse_window_rx_;
++    ry += mouse_window_ry_;
++  } else {
++    // Drained while the mouse is off: deltas keep accumulating in OnMouseMove,
++    // and toggling it on would otherwise dump the backlog as a camera snap.
++    mouse_dx_ = 0.0f;
++    mouse_dy_ = 0.0f;
++    mouse_window_rx_ = 0;
++    mouse_window_ry_ = 0;
++    mouse_budget_x_ = 0.0;
++    mouse_budget_y_ = 0.0;
++    mouse_window_start_ = now;
++  }
++  if (REXCVAR_GET(mnk_mouse_debug) && now - mouse_debug_last_ >= std::chrono::seconds(2)) {
++    REXLOG_INFO(
++        "mnk: {} polls, {} windows, {:.0f} px moved, rx={} ry={} budget=({:.0f},{:.0f}) "
++        "focus={} captured={} relative={} look={}",
++        mouse_debug_polls_, mouse_debug_windows_, mouse_debug_px_, mouse_window_rx_,
++        mouse_window_ry_, mouse_budget_x_, mouse_budget_y_, has_focus_.load(), mouse_captured_,
++        relative_mouse_mode_, IsMouseLookActive());
++    mouse_debug_polls_ = 0;
++    mouse_debug_windows_ = 0;
++    mouse_debug_px_ = 0.0;
++    mouse_debug_last_ = now;
++  }
+ 
+   auto clamp16 = [](int32_t v) -> int16_t {
+     return static_cast<int16_t>(std::clamp(v, (int32_t)INT16_MIN, (int32_t)INT16_MAX));

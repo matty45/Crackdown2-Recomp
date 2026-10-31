@@ -1,0 +1,207 @@
+diff --git a/include/rex/graphics/shared_memory.h b/include/rex/graphics/shared_memory.h
+index 4d85a2b..eca3c8d 100644
+--- a/include/rex/graphics/shared_memory.h
++++ b/include/rex/graphics/shared_memory.h
+@@ -99,6 +99,11 @@ class SharedMemory {
+   SharedMemory(memory::Memory& memory);
+   // Call in implementation-specific initialization.
+   void InitializeCommon();
++
++  // Lightweight upload / invalidation statistics, logged periodically from the
++  // command processor thread when gpu_log_shared_memory_stats is set.
++  static void NoteUploadBytes(uint64_t bytes);
++  void LogStatsIfDue();
+   void InitializeSparseHostGpuMemory(uint32_t granularity_log2);
+   // Call last in implementation-specific shutdown, also callable from the
+   // destructor.
+diff --git a/src/graphics/command_processor.cpp b/src/graphics/command_processor.cpp
+index a744375..93d3607 100644
+--- a/src/graphics/command_processor.cpp
++++ b/src/graphics/command_processor.cpp
+@@ -9,6 +9,7 @@
+  * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
+  */
+ 
++#include <cstdlib>
+ #include <algorithm>
+ #include <cinttypes>
+ #include <cmath>
+@@ -22,6 +23,8 @@
+ #include <rex/perf/counter.h>
+ #include <rex/chrono/clock.h>
+ #include <rex/graphics/command_processor.h>
++
++#include <array>
+ #include <rex/graphics/flags.h>
+ #include <rex/graphics/graphics_system.h>
+ #include <rex/graphics/pipeline/texture/info.h>
+@@ -355,8 +358,24 @@ void CommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+ 
+   // Volatile for the WAIT_REG_MEM loop.
+   const_cast<volatile uint32_t&>(regs.values[index]) = value;
+-  if (!regs.GetRegisterInfo(index)) {
+-    REXGPU_DEBUG("GPU: Write to unknown register ({:04X} = {:08X})", index, value);
++  // GetRegisterInfo is a several-thousand-case switch with a guarded static
++  // per case; calling it on every register write costs ~7% of the command
++  // processor thread in draw-heavy titles (Crackdown 2: 6k draws/frame).
++  // Resolve the "known register" bit once per index instead.
++  {
++    static std::array<uint64_t, (RegisterFile::kRegisterCount + 63) / 64> known_mask{};
++    static std::array<uint64_t, (RegisterFile::kRegisterCount + 63) / 64> resolved_mask{};
++    uint64_t bit = uint64_t(1) << (index & 63);
++    uint32_t word = index >> 6;
++    if (!(resolved_mask[word] & bit)) {
++      resolved_mask[word] |= bit;
++      if (regs.GetRegisterInfo(index)) {
++        known_mask[word] |= bit;
++      }
++    }
++    if (!(known_mask[word] & bit)) {
++      REXGPU_DEBUG("GPU: Write to unknown register ({:04X} = {:08X})", index, value);
++    }
+   }
+ 
+   // Scratch register writeback.
+@@ -702,10 +724,17 @@ bool CommandProcessor::ExecutePacketType0(memory::RingBuffer* reader, uint32_t p
+ 
+   uint32_t base_index = (packet & 0x7FFF);
+   uint32_t write_one_reg = (packet >> 15) & 0x1;
+-  for (uint32_t m = 0; m < count; m++) {
+-    uint32_t reg_data = reader->ReadAndSwap<uint32_t>();
+-    uint32_t target_index = write_one_reg ? base_index : base_index + m;
+-    WriteRegister(target_index, reg_data);
++  if (!write_one_reg) {
++    // Bulk path: lets backends copy shader-constant ranges with one
++    // copy_and_swap and a single dirty-flag update instead of one virtual
++    // WriteRegister per dword (type-0 packets are ~30% of the command
++    // processor thread in draw-heavy titles).
++    WriteRegisterRangeFromRing(reader, base_index, count);
++  } else {
++    for (uint32_t m = 0; m < count; m++) {
++      uint32_t reg_data = reader->ReadAndSwap<uint32_t>();
++      WriteRegister(base_index, reg_data);
++    }
+   }
+ 
+   return true;
+diff --git a/src/graphics/d3d12/shared_memory.cpp b/src/graphics/d3d12/shared_memory.cpp
+index a5c97a0..4e26191 100644
+--- a/src/graphics/d3d12/shared_memory.cpp
++++ b/src/graphics/d3d12/shared_memory.cpp
+@@ -324,6 +324,7 @@ bool D3D12SharedMemory::UploadRanges(
+         return false;
+       }
+       MakeRangeValid(upload_range_start << page_size_log2(), uint32_t(upload_buffer_size), false);
++      NoteUploadBytes(upload_buffer_size);
+       std::memcpy(upload_buffer_mapping,
+                   memory().TranslatePhysical(upload_range_start << page_size_log2()),
+                   upload_buffer_size);
+diff --git a/src/graphics/shared_memory.cpp b/src/graphics/shared_memory.cpp
+index ec0df7c..2320bf3 100644
+--- a/src/graphics/shared_memory.cpp
++++ b/src/graphics/shared_memory.cpp
+@@ -20,8 +20,63 @@
+ #include <rex/math.h>
+ #include <rex/memory.h>
+ 
++#include <atomic>
++
++#include <rex/cvar.h>
++#include <rex/chrono/clock.h>
++
++REXCVAR_DEFINE_INT32(gpu_invalidation_widen_kb, 256, "GPU",
++                     "When the CPU writes to a page the GPU has data from, invalidate (and "
++                     "later re-upload) up to this many KB around the write instead of only the "
++                     "touched page. Larger values mean fewer access violations on the CPU side "
++                     "but more GPU uploads; 0 or the page size disables widening.")
++    .range(0, 4096)
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++REXCVAR_DEFINE_BOOL(gpu_log_shared_memory_stats, false, "GPU",
++                    "Log GPU shared memory upload and invalidation rates every few seconds.")
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
+ namespace rex::graphics {
+ 
++namespace {
++std::atomic<uint64_t> g_upload_bytes{0};
++std::atomic<uint64_t> g_upload_calls{0};
++std::atomic<uint64_t> g_invalidations{0};
++std::atomic<uint64_t> g_invalidated_bytes{0};
++std::atomic<uint64_t> g_request_calls{0};
++}  // namespace
++
++void SharedMemory::NoteUploadBytes(uint64_t bytes) {
++  g_upload_bytes.fetch_add(bytes, std::memory_order_relaxed);
++  g_upload_calls.fetch_add(1, std::memory_order_relaxed);
++}
++
++void SharedMemory::LogStatsIfDue() {
++  if (!REXCVAR_GET(gpu_log_shared_memory_stats)) {
++    return;
++  }
++  static uint64_t last_log_ms = 0;
++  uint64_t now_ms = rex::chrono::Clock::QueryHostUptimeMillis();
++  if (!last_log_ms) {
++    last_log_ms = now_ms;
++    return;
++  }
++  uint64_t dt = now_ms - last_log_ms;
++  if (dt < 5000) {
++    return;
++  }
++  last_log_ms = now_ms;
++  double secs = double(dt) / 1000.0;
++  uint64_t ub = g_upload_bytes.exchange(0), uc = g_upload_calls.exchange(0),
++           inv = g_invalidations.exchange(0), ib = g_invalidated_bytes.exchange(0),
++           rq = g_request_calls.exchange(0);
++  REXGPU_INFO(
++      "Shared memory stats: {:.1f} MB/s uploaded in {:.0f} uploads/s ({:.0f} requests/s); "
++      "{:.0f} CPU invalidations/s covering {:.1f} MB/s (widen {} KB)",
++      double(ub) / (1024.0 * 1024.0) / secs, double(uc) / secs, double(rq) / secs,
++      double(inv) / secs, double(ib) / (1024.0 * 1024.0) / secs, REXCVAR_GET(gpu_invalidation_widen_kb));
++}
++
+ SharedMemory::SharedMemory(memory::Memory& memory) : memory_(memory) {
+   page_size_log2_ = rex::log2_ceil(uint32_t(rex::memory::page_size()));
+ }
+@@ -361,6 +416,8 @@ bool SharedMemory::RequestRanges(const std::pair<uint32_t, uint32_t>* ranges, si
+   }
+ 
+   SCOPE_profile_cpu_f("gpu");
++  g_request_calls.fetch_add(1, std::memory_order_relaxed);
++  LogStatsIfDue();
+ 
+   std::sort(merged_ranges.begin(), merged_ranges.end(),
+             [](const std::pair<uint32_t, uint32_t>& a, const std::pair<uint32_t, uint32_t>& b) {
+@@ -494,6 +551,14 @@ std::pair<uint32_t, uint32_t> SharedMemory::MemoryInvalidationCallback(
+ 
+   auto global_lock = global_critical_region_.Acquire();
+ 
++  uint32_t widen_pages = uint32_t(std::max(REXCVAR_GET(gpu_invalidation_widen_kb), 0)) * 1024 >>
++                         page_size_log2_;
++  if (widen_pages < 2) {
++    exact_range = true;
++  }
++  uint32_t requested_page_first = page_first;
++  uint32_t requested_page_last = page_last;
++
+   if (!exact_range) {
+     // Check if a somewhat wider range (up to 256 KB with 4 KB pages) can be
+     // invalidated - if no GPU-written data nearby that was not intended to be
+@@ -514,7 +579,16 @@ std::pair<uint32_t, uint32_t> SharedMemory::MemoryInvalidationCallback(
+       page_last =
+           (page_last & ~uint32_t(63)) + (std::max(rex::tzcnt(gpu_written_end), uint8_t(1)) - 1);
+     }
++    // Clamp the widening to a gpu_invalidation_widen_kb-aligned window around
++    // the written pages (64 pages = the original 256 KB behaviour).
++    if (widen_pages < 64 && rex::is_pow2(widen_pages)) {
++      page_first = std::max(page_first, requested_page_first & ~(widen_pages - 1));
++      page_last = std::min(page_last, requested_page_last | (widen_pages - 1));
++    }
+   }
++  g_invalidations.fetch_add(1, std::memory_order_relaxed);
++  g_invalidated_bytes.fetch_add(uint64_t(page_last - page_first + 1) << page_size_log2_,
++                                std::memory_order_relaxed);
+ 
+   for (uint32_t i = block_first; i <= block_last; ++i) {
+     uint64_t invalidate_bits = UINT64_MAX;

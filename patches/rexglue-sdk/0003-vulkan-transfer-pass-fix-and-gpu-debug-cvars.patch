@@ -1,0 +1,207 @@
+diff --git a/include/rex/graphics/flags.h b/include/rex/graphics/flags.h
+index 2cf24c4..fb692a1 100644
+--- a/include/rex/graphics/flags.h
++++ b/include/rex/graphics/flags.h
+@@ -47,6 +47,8 @@ REXCVAR_DECLARE(bool, direct_host_resolve);
+ // GPU Textures
+ REXCVAR_DECLARE(bool, gpu_allow_invalid_fetch_constants);
+ REXCVAR_DECLARE(bool, gpu_3d_to_2d_texture);
++REXCVAR_DECLARE(bool, gpu_log_textures);
++REXCVAR_DECLARE(bool, gpu_ignore_gamma_ramp);
+ REXCVAR_DECLARE(int32_t, anisotropic_override);
+ REXCVAR_DECLARE(int32_t, texture_cache_memory_limit_render_to_texture);
+ REXCVAR_DECLARE(int32_t, texture_cache_memory_limit_soft);
+diff --git a/include/rex/graphics/vulkan/command_processor.h b/include/rex/graphics/vulkan/command_processor.h
+index 696ff48..5787b81 100644
+--- a/include/rex/graphics/vulkan/command_processor.h
++++ b/include/rex/graphics/vulkan/command_processor.h
+@@ -793,6 +793,13 @@ class VulkanCommandProcessor : public CommandProcessor {
+   // but in_render_pass_ is true.
+   VkRenderPass current_render_pass_;
+   const VulkanRenderTargetCache::Framebuffer* current_framebuffer_;
++  // With dynamic rendering, a transfer pass and a draw pass into the same
++  // framebuffer differ only in their attachments (the transfer binds just the
++  // destination, through an ownership transfer view whose format may be an
++  // integer one), so the framebuffer alone can't tell whether the open pass is
++  // the one needed. The transfer destination view, VK_NULL_HANDLE for a draw
++  // pass.
++  VkImageView current_transfer_dest_view_ = VK_NULL_HANDLE;
+   bool in_render_pass_ = false;
+ 
+   // Currently bound graphics pipeline, either from the pipeline cache (with
+diff --git a/src/graphics/command_processor.cpp b/src/graphics/command_processor.cpp
+index 9d29791..93d3607 100644
+--- a/src/graphics/command_processor.cpp
++++ b/src/graphics/command_processor.cpp
+@@ -410,6 +410,7 @@ void CommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+         // enable mask is blue, green, red.
+         bool write_gamma_ramp_component = (regs[XE_GPU_REG_DC_LUT_WRITE_EN_MASK] &
+                                            (UINT32_C(1) << (2 - gamma_ramp_rw_component_))) != 0;
++        if (REXCVAR_GET(gpu_ignore_gamma_ramp)) write_gamma_ramp_component = false;
+         if (write_gamma_ramp_component) {
+           reg::DC_LUT_30_COLOR& gamma_ramp_entry =
+               gamma_ramp_256_entry_table_[gamma_ramp_rw_index.rw_index];
+@@ -449,6 +450,7 @@ void CommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+         // DC_LUT_SEQ_COLOR is, but the write enable mask is blue, green, red.
+         bool write_gamma_ramp_component = (regs[XE_GPU_REG_DC_LUT_WRITE_EN_MASK] &
+                                            (UINT32_C(1) << (2 - gamma_ramp_rw_component_))) != 0;
++        if (REXCVAR_GET(gpu_ignore_gamma_ramp)) write_gamma_ramp_component = false;
+         if (write_gamma_ramp_component) {
+           reg::DC_LUT_PWL_DATA& gamma_ramp_entry =
+               gamma_ramp_pwl_rgb_[gamma_ramp_rw_index_pwl][gamma_ramp_rw_component_];
+@@ -479,6 +481,7 @@ void CommandProcessor::WriteRegister(uint32_t index, uint32_t value) {
+         assert_zero(regs[XE_GPU_REG_DC_LUT_RW_MODE] & 0b1);
+         auto gamma_ramp_rw_index = regs.Get<reg::DC_LUT_RW_INDEX>();
+         uint32_t gamma_ramp_write_enable_mask = regs[XE_GPU_REG_DC_LUT_WRITE_EN_MASK] & 0b111;
++        if (REXCVAR_GET(gpu_ignore_gamma_ramp)) gamma_ramp_write_enable_mask = 0;
+         if (gamma_ramp_write_enable_mask) {
+           reg::DC_LUT_30_COLOR& gamma_ramp_entry =
+               gamma_ramp_256_entry_table_[gamma_ramp_rw_index.rw_index];
+diff --git a/src/graphics/d3d12/texture_cache.cpp b/src/graphics/d3d12/texture_cache.cpp
+index 2be0e8e..f89ef74 100644
+--- a/src/graphics/d3d12/texture_cache.cpp
++++ b/src/graphics/d3d12/texture_cache.cpp
+@@ -9,6 +9,7 @@
+  * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
+  */
+ 
++#include <cstdlib>
+ #include <algorithm>
+ #include <array>
+ #include <cfloat>
+@@ -1523,6 +1524,13 @@ std::unique_ptr<TextureCache::Texture> D3D12TextureCache::CreateTexture(TextureK
+     unsupported_format_features_used_[uint32_t(key.format)] |= kUnsupportedResourceBit;
+     return nullptr;
+   }
++  if (REXCVAR_GET(gpu_log_textures)) {
++    REXGPU_INFO("C2TEX create fmt={} ({}) dim={} {}x{}x{} mips={} tiled={} packed={} base=0x{:X} dxgi={}",
++                uint32_t(key.format), FormatInfo::Get(key.format)->name, uint32_t(key.dimension),
++                key.GetWidth(), key.GetHeight(), key.GetDepthOrArraySize(), uint32_t(key.mip_max_level),
++                uint32_t(key.tiled), uint32_t(key.packed_mips), uint32_t(key.base_page) << 12,
++                uint32_t(desc.Format));
++  }
+   if (key.dimension == xenos::DataDimension::k3D) {
+     desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+   } else {
+diff --git a/src/graphics/pipeline/texture/cache.cpp b/src/graphics/pipeline/texture/cache.cpp
+index 76f5600..7ca964f 100644
+--- a/src/graphics/pipeline/texture/cache.cpp
++++ b/src/graphics/pipeline/texture/cache.cpp
+@@ -45,6 +45,8 @@ REXCVAR_DEFINE_INT32(texture_cache_memory_limit_soft_lifetime, 30, "GPU",
+                      "Soft texture cache memory limit lifetime (seconds)")
+     .range(1, 3600);
+ 
++REXCVAR_DEFINE_BOOL(gpu_log_textures, false, "GPU", "Log every host texture creation (debug)");
++REXCVAR_DEFINE_BOOL(gpu_ignore_gamma_ramp, false, "GPU", "Ignore guest gamma ramp writes, keep the identity ramp (debug)");
+ REXCVAR_DEFINE_BOOL(gpu_3d_to_2d_texture, true, "GPU",
+                     "Sample problematic 3D textures through 2D-compatible wrappers")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+diff --git a/src/graphics/vulkan/command_processor.cpp b/src/graphics/vulkan/command_processor.cpp
+index 001f36b..c4c70ad 100644
+--- a/src/graphics/vulkan/command_processor.cpp
++++ b/src/graphics/vulkan/command_processor.cpp
+@@ -3097,7 +3097,8 @@ void VulkanCommandProcessor::SubmitBarriersAndEnterRenderTargetCacheRenderPass(
+ 
+   if (use_dynamic_rendering) {
+     if (in_render_pass_ && current_framebuffer_ == framebuffer &&
+-        current_render_pass_ == VK_NULL_HANDLE) {
++        current_render_pass_ == VK_NULL_HANDLE &&
++        current_transfer_dest_view_ == VK_NULL_HANDLE) {
+       return;
+     }
+   } else {
+@@ -3117,6 +3118,7 @@ void VulkanCommandProcessor::SubmitBarriersAndEnterRenderTargetCacheRenderPass(
+ 
+   current_render_pass_ = use_dynamic_rendering ? VK_NULL_HANDLE : render_pass;
+   current_framebuffer_ = framebuffer;
++  current_transfer_dest_view_ = VK_NULL_HANDLE;
+ 
+   if (use_dynamic_rendering) {
+     VkRenderingAttachmentInfo color_attachments[xenos::kMaxColorRenderTargets];
+@@ -3171,7 +3173,8 @@ void VulkanCommandProcessor::SubmitBarriersAndEnterRenderTargetCacheRenderPass(
+ 
+   if (use_dynamic_rendering) {
+     if (in_render_pass_ && current_framebuffer_ == framebuffer &&
+-        current_render_pass_ == VK_NULL_HANDLE) {
++        current_render_pass_ == VK_NULL_HANDLE &&
++        current_transfer_dest_view_ == transfer_dest_view) {
+       return;
+     }
+   } else {
+@@ -3191,6 +3194,7 @@ void VulkanCommandProcessor::SubmitBarriersAndEnterRenderTargetCacheRenderPass(
+ 
+   current_render_pass_ = use_dynamic_rendering ? VK_NULL_HANDLE : render_pass;
+   current_framebuffer_ = framebuffer;
++  current_transfer_dest_view_ = transfer_dest_view;
+ 
+   if (use_dynamic_rendering) {
+     VkRenderingAttachmentInfo color_attachment = {};
+diff --git a/src/graphics/vulkan/pipeline_cache.cpp b/src/graphics/vulkan/pipeline_cache.cpp
+index 91ac08f..0a14096 100644
+--- a/src/graphics/vulkan/pipeline_cache.cpp
++++ b/src/graphics/vulkan/pipeline_cache.cpp
+@@ -1246,6 +1246,16 @@ bool VulkanPipelineCache::TranslateAnalyzedShader(SpirvShaderTranslator& transla
+     return false;
+   }
+ 
++  // Dump the translated SPIR-V next to the ucode if desired (parity with the
++  // D3D12 backend, which dumps DXBC).
++  if (!REXCVAR_GET(dump_shaders).empty()) {
++    bool edram_fsi_used =
++        render_target_cache_.GetPath() == RenderTargetCache::Path::kPixelShaderInterlock;
++    translation.Dump(REXCVAR_GET(dump_shaders), (shader.type() == xenos::ShaderType::kPixel)
++                                                    ? (edram_fsi_used ? "spirv_fsi" : "spirv_rtv")
++                                                    : "spirv");
++  }
++
+   // TODO(Triang3l): Log that the shader has been successfully translated in
+   // common code.
+ 
+diff --git a/src/graphics/vulkan/render_target_cache.cpp b/src/graphics/vulkan/render_target_cache.cpp
+index 0298f06..024ebec 100644
+--- a/src/graphics/vulkan/render_target_cache.cpp
++++ b/src/graphics/vulkan/render_target_cache.cpp
+@@ -1857,6 +1857,17 @@ uint32_t VulkanRenderTargetCache::GetMaxRenderTargetHeight() const {
+ }
+ 
+ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(RenderTargetKey key) {
++  if (REXCVAR_GET(gpu_log_textures)) {
++    if (key.is_depth) {
++      REXGPU_INFO("C2RT depth fmt={} msaa={} pitch32={} w={}", uint32_t(key.GetDepthFormat()),
++                  uint32_t(key.msaa_samples), uint32_t(key.pitch_tiles_at_32bpp), key.GetWidth());
++    } else {
++      REXGPU_INFO("C2RT color fmt={} ({}) msaa={} pitch32={} w={} vk={}", uint32_t(key.GetColorFormat()),
++                  xenos::GetColorRenderTargetFormatName(key.GetColorFormat()), uint32_t(key.msaa_samples),
++                  uint32_t(key.pitch_tiles_at_32bpp), key.GetWidth(),
++                  uint32_t(GetColorVulkanFormat(key.GetColorFormat())));
++    }
++  }
+   const ui::vulkan::VulkanDevice* const vulkan_device = command_processor_.GetVulkanDevice();
+   const ui::vulkan::VulkanDevice::Functions& dfn = vulkan_device->functions();
+   const VkDevice device = vulkan_device->device();
+diff --git a/src/graphics/vulkan/texture_cache.cpp b/src/graphics/vulkan/texture_cache.cpp
+index ecbd940..96d1ec3 100644
+--- a/src/graphics/vulkan/texture_cache.cpp
++++ b/src/graphics/vulkan/texture_cache.cpp
+@@ -9,6 +9,7 @@
+  * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
+  */
+ 
++#include <cstdlib>
+ #include <algorithm>
+ #include <array>
+ #include <cstddef>
+@@ -1141,6 +1142,13 @@ std::unique_ptr<TextureCache::Texture> VulkanTextureCache::CreateTexture(Texture
+     unsupported_format_features_used_[uint32_t(key.format)] |= kUnsupportedResourceBit;
+     return nullptr;
+   }
++  if (REXCVAR_GET(gpu_log_textures)) {
++    REXGPU_INFO("C2TEX create fmt={} ({}) dim={} {}x{}x{} mips={} tiled={} packed={} base=0x{:X} vk={}/{}",
++                uint32_t(key.format), FormatInfo::Get(key.format)->name, uint32_t(key.dimension),
++                key.GetWidth(), key.GetHeight(), key.GetDepthOrArraySize(), uint32_t(key.mip_max_level),
++                uint32_t(key.tiled), uint32_t(key.packed_mips), uint32_t(key.base_page) << 12, uint32_t(formats[0]),
++                uint32_t(formats[1]));
++  }
+ 
+   const ui::vulkan::VulkanDevice* const vulkan_device = command_processor_.GetVulkanDevice();
+   const ui::vulkan::VulkanDevice::Functions& dfn = vulkan_device->functions();

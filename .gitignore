@@ -416,3 +416,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# tools/setup_game.py output
+cd2_game.json
+/game/

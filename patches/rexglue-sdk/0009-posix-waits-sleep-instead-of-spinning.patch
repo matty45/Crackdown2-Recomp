@@ -1,0 +1,203 @@
+diff --git a/src/core/threading_posix.cpp b/src/core/threading_posix.cpp
+index af354e6..62b51bc 100644
+--- a/src/core/threading_posix.cpp
++++ b/src/core/threading_posix.cpp
+@@ -6,6 +6,7 @@
+  * @license     BSD 3-Clause License
+  */
+ 
++#include <algorithm>
+ #include <rex/platform.h>
+ #include <rex/thread.h>
+ 
+@@ -267,6 +268,22 @@ static sem_t* RexCreateAnonymousSemaphore() {
+ }
+ #endif  // __APPLE__
+ 
++// Wake-up for WaitMultiple: every signal of a waitable object bumps a global
++// generation and, if any multi-wait is blocked, notifies it. A multi-wait then
++// re-checks its handles immediately instead of polling every millisecond.
++std::atomic<uint64_t> g_any_signal_generation{0};
++std::atomic<int> g_multi_waiters{0};
++std::mutex g_any_signal_mutex;
++std::condition_variable g_any_signal_cond;
++
++void NotifyAnyWaiter() {
++  g_any_signal_generation.fetch_add(1, std::memory_order_acq_rel);
++  if (g_multi_waiters.load(std::memory_order_acquire)) {
++    std::lock_guard<std::mutex> lock(g_any_signal_mutex);
++    g_any_signal_cond.notify_all();
++  }
++}
++
+ class PosixConditionBase {
+  public:
+   PosixConditionBase() {
+@@ -335,7 +352,22 @@ class PosixConditionBase {
+                         ? std::chrono::steady_clock::time_point::max()
+                         : start_time + timeout;
+ 
++    g_multi_waiters.fetch_add(1, std::memory_order_acq_rel);
++    struct MultiWaiterGuard {
++      ~MultiWaiterGuard() { g_multi_waiters.fetch_sub(1, std::memory_order_acq_rel); }
++    } multi_waiter_guard;
++    // Block until any waitable object is signalled (or the deadline / a short
++    // safety cap passes), without spinning.
++    auto wait_for_any_signal = [&](uint64_t generation, std::chrono::microseconds cap) {
++      auto until = std::min(end_time, std::chrono::steady_clock::now() + cap);
++      std::unique_lock<std::mutex> lock(g_any_signal_mutex);
++      g_any_signal_cond.wait_until(lock, until, [&] {
++        return g_any_signal_generation.load(std::memory_order_acquire) != generation;
++      });
++    };
++
+     while (true) {
++      const uint64_t generation = g_any_signal_generation.load(std::memory_order_acquire);
+       size_t first_signaled = std::numeric_limits<size_t>::max();
+       bool condition_met = false;
+       bool all_locked = true;
+@@ -367,7 +399,14 @@ class PosixConditionBase {
+ 
+       if (!all_locked) {
+         locks.clear();
+-        std::this_thread::yield();
++        // Another thread holds one of the handles' mutexes (often another
++        // waiter polling the same handles). Back off with a short real sleep:
++        // a bare yield here turned two waiters into two cores of busy-spin.
++        if (std::chrono::steady_clock::now() >= end_time) {
++          return std::make_pair<WaitResult, size_t>(WaitResult::kTimeout, 0);
++        }
++        // Mutex holders are usually other waiters checking briefly.
++        wait_for_any_signal(generation, std::chrono::microseconds(100));
+         continue;
+       }
+ 
+@@ -411,13 +450,10 @@ class PosixConditionBase {
+         return std::make_pair<WaitResult, size_t>(WaitResult::kTimeout, 0);
+       }
+ 
+-      if (timeout == std::chrono::milliseconds::max()) {
+-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+-      } else {
+-        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - now);
+-        auto sleep_time = std::min(remaining, std::chrono::milliseconds(1));
+-        std::this_thread::sleep_for(sleep_time);
+-      }
++      // Wake on the next signal of any waitable object (previously this
++      // polled every millisecond, and the last sub-millisecond of a timed
++      // wait truncated to sleep_for(0) and busy-spun).
++      wait_for_any_signal(generation, std::chrono::microseconds(2000));
+     }
+   }
+ 
+@@ -450,6 +486,7 @@ class PosixCondition<Event> : public PosixConditionBase {
+     auto lock = std::unique_lock<std::mutex>(mutex_);
+     signal_ = true;
+     cond_.notify_all();
++    NotifyAnyWaiter();
+     return true;
+   }
+ 
+@@ -487,6 +524,7 @@ class PosixCondition<Semaphore> : public PosixConditionBase {
+     }
+     count_ += release_count;
+     cond_.notify_all();
++    NotifyAnyWaiter();
+     return true;
+   }
+ 
+@@ -495,6 +533,7 @@ class PosixCondition<Semaphore> : public PosixConditionBase {
+   inline void post_execution() override {
+     count_--;
+     cond_.notify_all();
++    NotifyAnyWaiter();
+   }
+   uint32_t count_;
+   const uint32_t maximum_count_;
+@@ -519,6 +558,7 @@ class PosixCondition<Mutant> : public PosixConditionBase {
+       // Free to be acquired by another thread
+       if (count_ == 0) {
+         cond_.notify_all();
++        NotifyAnyWaiter();
+       }
+       return true;
+     }
+@@ -551,6 +591,7 @@ class PosixCondition<Timer> : public PosixConditionBase {
+     std::lock_guard<std::mutex> lock(mutex_);
+     signal_ = true;
+     cond_.notify_all();
++    NotifyAnyWaiter();
+     return true;
+   }
+ 
+@@ -979,6 +1020,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
+       exit_code_ = exit_code;
+       signaled_ = true;
+       cond_.notify_all();
++      NotifyAnyWaiter();
+     }
+     if (is_current_thread) {
+       pthread_exit(reinterpret_cast<void*>(exit_code));
+@@ -1449,6 +1491,7 @@ void* PosixCondition<Thread>::ThreadStartRoutine(void* parameter) {
+     thread->handle_.exit_code_ = 0;
+     thread->handle_.signaled_ = true;
+     thread->handle_.cond_.notify_all();
++    NotifyAnyWaiter();
+   }
+ 
+   current_thread_ = nullptr;
+diff --git a/src/core/timer_queue.cpp b/src/core/timer_queue.cpp
+index 5cfea05..11905a0 100644
+--- a/src/core/timer_queue.cpp
++++ b/src/core/timer_queue.cpp
+@@ -15,7 +15,7 @@
+ #include <disruptorplus/multi_threaded_claim_strategy.hpp>
+ #include <disruptorplus/ring_buffer.hpp>
+ #include <disruptorplus/sequence_barrier.hpp>
+-#include <disruptorplus/spin_wait_strategy.hpp>
++#include <disruptorplus/blocking_wait_strategy.hpp>
+ 
+ #include <rex/assert.h>
+ #include <rex/thread.h>
+@@ -142,9 +142,9 @@ class TimerQueue {
+   // This ring buffer will be used to introduce timers queued by the public API
+   static constexpr size_t kWaitCount = 512;
+   dp::ring_buffer<std::shared_ptr<WaitItem>> buffer_;
+-  dp::spin_wait_strategy wait_strategy_;
+-  dp::multi_threaded_claim_strategy<dp::spin_wait_strategy> claim_strategy_;
+-  dp::sequence_barrier<dp::spin_wait_strategy> consumed_;
++  dp::blocking_wait_strategy wait_strategy_;  // blocking: spin_wait kept a core busy
++  dp::multi_threaded_claim_strategy<dp::blocking_wait_strategy> claim_strategy_;
++  dp::sequence_barrier<dp::blocking_wait_strategy> consumed_;
+ 
+   // This is a _sorted_ (ascending due_) list of active timers managed by a
+   // dedicated thread
+diff --git a/thirdparty/disruptorplus/include/disruptorplus/blocking_wait_strategy.hpp b/thirdparty/disruptorplus/include/disruptorplus/blocking_wait_strategy.hpp
+index 32d427d..05ccedc 100644
+--- a/thirdparty/disruptorplus/include/disruptorplus/blocking_wait_strategy.hpp
++++ b/thirdparty/disruptorplus/include/disruptorplus/blocking_wait_strategy.hpp
+@@ -169,13 +169,17 @@ namespace disruptorplus
+             sequence_t result;
+             {
+                 std::unique_lock<std::mutex> lock(m_mutex);
+-                m_cv.wait_until(
+-                    lock,
+-                    [&]() -> bool {
+-                        result = minimum_sequence_after(sequence, count, sequences);
+-                        return difference(result, sequence) >= 0;
+-                    },
+-                    timeoutTime);
++                auto ready = [&]() -> bool {
++                    result = minimum_sequence_after(sequence, count, sequences);
++                    return difference(result, sequence) >= 0;
++                };
++                // std::condition_variable::wait_until takes (lock, time, predicate);
++                // a time_point::max() deadline can overflow the clock conversion
++                // inside some standard libraries, so wait without a deadline.
++                if (timeoutTime == std::chrono::time_point<Clock, Duration>::max())
++                    m_cv.wait(lock, ready);
++                else
++                    m_cv.wait_until(lock, timeoutTime, ready);
+             }
+             return result;
+         }

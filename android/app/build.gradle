@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+// Native libraries are built outside Gradle (tools/build_android.sh) and
+// dropped into src/main/jniLibs/arm64-v8a: libmain.so (game + generated
+// code), librexruntime.so, librexgpu-xenos.so, libSDL3.so, libc++_shared.so.
+android {
+    namespace 'com.crackdown2.recomp'
+    compileSdk 35
+
+    sourceSets {
+        // SDL3's own Java side (SDLActivity and friends) from the SDK tree.
+        main.java.srcDirs += [project.findProperty('sdlJavaDir') ?: "${rootDir}/../../rexglue-sdk/thirdparty/sdl3/android-project/app/src/main/java"]
+    }
+
+    defaultConfig {
+        applicationId 'com.crackdown2.recomp'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    // Prebuilt .so files: keep them uncompressed and page-aligned in the APK.
+    packaging { jniLibs { useLegacyPackaging true } }
+
+    buildTypes {
+        release {
+            minifyEnabled false; signingConfig signingConfigs.debug
+            // -Pdebuggable=true makes the APK capturable by RenderDoc / GPU debug layers.
+            debuggable project.hasProperty('debuggable') && project.property('debuggable') == 'true'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies { implementation 'androidx.core:core:1.13.1' }

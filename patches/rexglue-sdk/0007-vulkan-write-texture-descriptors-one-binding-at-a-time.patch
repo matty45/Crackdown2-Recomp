@@ -1,0 +1,143 @@
+diff --git a/include/rex/graphics/vulkan/command_processor.h b/include/rex/graphics/vulkan/command_processor.h
+index 5787b81..e2743ab 100644
+--- a/include/rex/graphics/vulkan/command_processor.h
++++ b/include/rex/graphics/vulkan/command_processor.h
+@@ -566,6 +566,8 @@ class VulkanCommandProcessor : public CommandProcessor {
+   // Temporary storage with reusable memory for writing image and sampler
+   // descriptors.
+   std::vector<VkDescriptorImageInfo> descriptor_write_image_info_;
++  // Reused VkWriteDescriptorSet storage for UpdateBindings.
++  std::vector<VkWriteDescriptorSet> descriptor_writes_;
+ 
+   std::unique_ptr<ui::vulkan::VulkanUploadBufferPool> uniform_buffer_pool_;
+ 
+diff --git a/src/graphics/vulkan/command_processor.cpp b/src/graphics/vulkan/command_processor.cpp
+index c4c70ad..ccd4735 100644
+--- a/src/graphics/vulkan/command_processor.cpp
++++ b/src/graphics/vulkan/command_processor.cpp
+@@ -6633,8 +6633,11 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
+   // Consecutive bindings updated via a single VkWriteDescriptorSet must have
+   // identical stage flags, but for the constants they vary. Plus vertex and
+   // pixel texture images and samplers.
+-  std::array<VkWriteDescriptorSet, SpirvShaderTranslator::kConstantBufferCount + 2 * 2>
+-      write_descriptor_sets;
++  // One write per binding (see WriteTransientTextureBindings), so size for the
++  // actual texture and sampler counts.
++  descriptor_writes_.resize(SpirvShaderTranslator::kConstantBufferCount + texture_count_vertex +
++                            sampler_count_vertex + texture_count_pixel + sampler_count_pixel);
++  VkWriteDescriptorSet* write_descriptor_sets_data = descriptor_writes_.data();
+   uint32_t write_descriptor_set_count = 0;
+   uint32_t write_descriptor_set_bits = 0;
+   assert_not_zero(current_graphics_descriptor_set_values_up_to_date_ &
+@@ -6660,7 +6663,7 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
+     // Consecutive bindings updated via a single VkWriteDescriptorSet must have
+     // identical stage flags, but for the constants they vary.
+     for (uint32_t i = 0; i < SpirvShaderTranslator::kConstantBufferCount; ++i) {
+-      VkWriteDescriptorSet& write_constants = write_descriptor_sets[write_descriptor_set_count++];
++      VkWriteDescriptorSet& write_constants = write_descriptor_sets_data[write_descriptor_set_count++];
+       write_constants.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+       write_constants.pNext = nullptr;
+       write_constants.dstSet = constants_descriptor_set;
+@@ -6679,7 +6682,7 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
+   // Vertex shader textures and samplers.
+   if (write_vertex_textures) {
+     VkWriteDescriptorSet* write_textures =
+-        write_descriptor_sets.data() + write_descriptor_set_count;
++        write_descriptor_sets_data + write_descriptor_set_count;
+     uint32_t texture_descriptor_set_write_count = WriteTransientTextureBindings(
+         true, texture_count_vertex, sampler_count_vertex,
+         current_guest_graphics_pipeline_layout_->descriptor_set_layout_textures_vertex_ref(),
+@@ -6696,7 +6699,7 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
+   // Pixel shader textures and samplers.
+   if (write_pixel_textures) {
+     VkWriteDescriptorSet* write_textures =
+-        write_descriptor_sets.data() + write_descriptor_set_count;
++        write_descriptor_sets_data + write_descriptor_set_count;
+     uint32_t texture_descriptor_set_write_count = WriteTransientTextureBindings(
+         false, texture_count_pixel, sampler_count_pixel,
+         current_guest_graphics_pipeline_layout_->descriptor_set_layout_textures_pixel_ref(),
+@@ -6712,7 +6715,7 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
+   }
+   // Write.
+   if (write_descriptor_set_count) {
+-    dfn.vkUpdateDescriptorSets(device, write_descriptor_set_count, write_descriptor_sets.data(), 0,
++    dfn.vkUpdateDescriptorSets(device, write_descriptor_set_count, write_descriptor_sets_data, 0,
+                                nullptr);
+   }
+   // Only make valid if all descriptor sets have been allocated and written
+@@ -6796,31 +6799,56 @@ uint32_t VulkanCommandProcessor::WriteTransientTextureBindings(
+   used_texture_descriptor_set.layout = texture_descriptor_set_layout_key;
+   used_texture_descriptor_set.set = texture_descriptor_set;
+   uint32_t descriptor_set_write_count = 0;
+-  if (texture_count) {
+-    VkWriteDescriptorSet& descriptor_set_write =
+-        descriptor_set_writes_out[descriptor_set_write_count++];
+-    descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+-    descriptor_set_write.pNext = nullptr;
+-    descriptor_set_write.dstSet = texture_descriptor_set;
+-    descriptor_set_write.dstBinding = 0;
+-    descriptor_set_write.dstArrayElement = 0;
+-    descriptor_set_write.descriptorCount = texture_count;
+-    descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+-    descriptor_set_write.pImageInfo = texture_image_info;
+-    descriptor_set_write.pBufferInfo = nullptr;
+-    descriptor_set_write.pTexelBufferView = nullptr;
+-  }
+-  if (sampler_count) {
++  // Each texture and sampler is its own binding with descriptorCount 1. Write
++  // them one binding per VkWriteDescriptorSet rather than one write whose
++  // descriptorCount rolls over into the following bindings: the roll-over is
++  // valid Vulkan, but the PowerVR driver (Pixel 10) mishandles it and binds
++  // the last image to every binding, so e.g. all three planes of a YUV video
++  // sample the same texture.
++  // Only the PowerVR driver needs this; elsewhere keep the cheaper single
++  // write per descriptor type (rolling over consecutive bindings).
++  const ui::vulkan::VulkanDevice::Properties& device_properties = GetVulkanDevice()->properties();
++  const bool split_descriptor_writes =
++      device_properties.driverID == VK_DRIVER_ID_IMAGINATION_PROPRIETARY ||
++      device_properties.vendorID == 0x1010;
++  if (!split_descriptor_writes) {
++    if (texture_count) {
++      VkWriteDescriptorSet& descriptor_set_write =
++          descriptor_set_writes_out[descriptor_set_write_count++];
++      descriptor_set_write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
++      descriptor_set_write.dstSet = texture_descriptor_set;
++      descriptor_set_write.dstBinding = 0;
++      descriptor_set_write.descriptorCount = texture_count;
++      descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
++      descriptor_set_write.pImageInfo = texture_image_info;
++    }
++    if (sampler_count) {
++      VkWriteDescriptorSet& descriptor_set_write =
++          descriptor_set_writes_out[descriptor_set_write_count++];
++      descriptor_set_write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
++      descriptor_set_write.dstSet = texture_descriptor_set;
++      descriptor_set_write.dstBinding = texture_count;
++      descriptor_set_write.descriptorCount = sampler_count;
++      descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
++      descriptor_set_write.pImageInfo = sampler_image_info;
++    }
++    assert_not_zero(descriptor_set_write_count);
++    return descriptor_set_write_count;
++  }
++  for (uint32_t i = 0; i < texture_count + sampler_count; ++i) {
++    bool is_texture = i < texture_count;
+     VkWriteDescriptorSet& descriptor_set_write =
+         descriptor_set_writes_out[descriptor_set_write_count++];
+     descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+     descriptor_set_write.pNext = nullptr;
+     descriptor_set_write.dstSet = texture_descriptor_set;
+-    descriptor_set_write.dstBinding = texture_count;
++    descriptor_set_write.dstBinding = i;
+     descriptor_set_write.dstArrayElement = 0;
+-    descriptor_set_write.descriptorCount = sampler_count;
+-    descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+-    descriptor_set_write.pImageInfo = sampler_image_info;
++    descriptor_set_write.descriptorCount = 1;
++    descriptor_set_write.descriptorType =
++        is_texture ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
++    descriptor_set_write.pImageInfo =
++        is_texture ? texture_image_info + i : sampler_image_info + (i - texture_count);
+     descriptor_set_write.pBufferInfo = nullptr;
+     descriptor_set_write.pTexelBufferView = nullptr;
+   }

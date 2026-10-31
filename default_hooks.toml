@@ -34,3 +34,48 @@ address = 0x82F06A50
 name = "LogResourceAddCheck"  
 registers = ["r30", "r29"]
 
+
+# Scaleform GFx renderer draw counters (GRendererXbox360Impl entry points, see
+# tools/import_decomp_names.py / default_names.toml). Only log when
+# --c2_gfx_draw_log is set.
+[[midasm_hook]]
+address = 0x82D96640
+name = "CountGfxDrawIndexedTriList"
+registers = ["r8"]
+
+[[midasm_hook]]
+address = 0x82D969B0
+name = "CountGfxDrawBitmaps"
+registers = ["r7"]
+
+[[midasm_hook]]
+address = 0x82D968D0
+name = "CountGfxDrawLineStrip"
+registers = ["r5"]
+
+[[midasm_hook]]
+address = 0x82209218
+name = "LogGfxEndDisplay"
+registers = ["r3"]
+
+# Experiment: force GPU texture-cache invalidation whenever GFx unmaps or
+# updates a texture (--c2_force_texture_invalidate). Tests the theory that CPU
+# writes into the glyph atlas are not picked up by the texture cache.
+[[midasm_hook]]
+address = 0x82D93EC0
+name = "OnGfxTextureUnmap"
+registers = ["r3"]
+
+[[midasm_hook]]
+address = 0x82D94AE8
+name = "OnGfxTextureUpdate"
+registers = ["r3"]
+
+
+# Native Graphics rows in the front-end Display Options screen (src/native_menu.cpp).
+# Fires just before the menu framework calls screen->OnMenuEvent(0, menu, row)
+# for an activated row: r3 = screen, r5 = menu index, r6 = selected row, r26 = menu.
+[[midasm_hook]]
+address = 0x828F1014
+name = "C2MenuItemActivated"
+registers = ["r3", "r5", "r6", "r26"]
